@@ -94,7 +94,32 @@ function routePath(route: LaneMapping['originalRoute'], m: ResolvedModeling): Pa
   }
   if (!segments.length || segments.some(s => ![...s.a, ...s.b, s.widthMm, s.thicknessMm].every(finite))) fail('route_geometry', 'Nonempty finite copper path required')
   for (let i = 1; i < segments.length; i++) if (distance(segments[i - 1].b, segments[i].a) > 1e-5) fail('route_geometry', 'Disconnected copper route')
-  return { segments, terminals: [segments[0].a, segments.at(-1)!.b] }
+  const joined = joinShortSegments(segments)
+  return { segments: joined, terminals: [joined[0].a, joined.at(-1)!.b] }
+}
+
+/** EXPERIMENT (#46): FastHenry models a segment as a box, and finely sampled
+ * curves give pieces shorter than the trace width whose boxes overlap at each
+ * joint ("mutual inductance = infinity"). Join consecutive same-layer pieces
+ * of equal width/thickness until each chord is at least one trace width long.
+ * Route ends, vias and width changes keep their exact coordinates. */
+export function joinShortSegments(segments: Segment[]): Segment[] {
+  const same = (s: Segment, t: Segment) => s.a[2] === s.b[2] && t.a[2] === t.b[2] && s.a[2] === t.a[2]
+    && s.widthMm === t.widthMm && s.thicknessMm === t.thicknessMm && s.conductivitySm === t.conductivitySm
+  const out: Segment[] = []
+  let i = 0
+  while (i < segments.length) {
+    const start = segments[i]
+    let j = i
+    while (j + 1 < segments.length && same(start, segments[j + 1]) && distance(start.a, segments[j].b) < start.widthMm) j++
+    out.push({ ...start, b: segments[j].b })
+    i = j + 1
+    // A short tail before a via, width change or route end joins the previous chord.
+    const last = out.at(-1)!, previous = out.at(-2)
+    if (previous && distance(last.a, last.b) < last.widthMm && same(previous, last) && (i >= segments.length || !same(last, segments[i])))
+      out.splice(-2, 2, { ...previous, b: last.b })
+  }
+  return out
 }
 
 type Via = Extract<CircuitJson[number], { type: 'pcb_via' }>
