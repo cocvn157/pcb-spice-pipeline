@@ -37,8 +37,6 @@ const channelSchema = z.object({
     issue(['lanes'], 'Lane names must be distinct')
   if (channel.reduction === 'routed-copper' && extraction.ground_mesh_size_mm === undefined)
     issue(['extraction', 'ground_mesh_size_mm'], 'Required for routed-copper')
-  if (channel.reduction === 'straightened-stages' && !Object.keys(channel.straightened_stage_profiles ?? {}).length)
-    issue(['straightened_stage_profiles'], 'Profiles required for straightened-stages')
 })
 
 const canonical = (value: unknown): string => JSON.stringify(value, (_, item) =>
