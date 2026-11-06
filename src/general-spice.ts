@@ -40,8 +40,8 @@ export function electricalSources(circuit: CircuitJson, modeling: Modeling, node
   const sourcePorts = circuit.filter(e => e.type === 'source_port'), sourceComponents = circuit.filter(e => e.type === 'source_component')
   const terminals = (positive: string, negative: string): string => { activeNodes.add(positive); activeNodes.add(negative); return `${positive} ${negative}` }
   for (const [i, source] of circuit.filter(e => e.type === 'simulation_voltage_source').entries()) {
-    const positive = source.is_dc_source ? source.positive_source_port_id ?? source.positive_source_net_id : source.terminal1_source_port_id
-    const negative = source.is_dc_source ? source.negative_source_port_id ?? source.negative_source_net_id : source.terminal2_source_port_id
+    const positive = source.is_dc_source !== false ? source.positive_source_port_id ?? source.positive_source_net_id : source.terminal1_source_port_id
+    const negative = source.is_dc_source !== false ? source.negative_source_port_id ?? source.negative_source_net_id : source.terminal2_source_port_id
     if (!positive || !negative) return fail('supply_reference', 'Voltage sources require explicit positive and negative source port/net terminals')
     const pos = nodes.node(positive), neg = nodes.node(negative)
     if (pos === neg) fail('supply_short', 'Voltage source terminals resolve to the same node')

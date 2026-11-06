@@ -81,6 +81,8 @@ test('canonical DC port and net terminals preserve the explicit supply reference
     const nodes=circuitNodes(cj,g,m),electrical=electricalSources(cj,m,nodes)
     assert.deepEqual(electrical.lines,[`VPHYSICAL0 ${nodes.node('v0')} 0 3.3`])
     assert.ok(electrical.grounded.has(nodes.node('v0')))
+    delete source.is_dc_source
+    assert.deepEqual(electricalSources(cj,m,nodes).lines,[`VPHYSICAL0 ${nodes.node('v0')} 0 3.3`])
     delete source.negative_source_net_id;delete source.negative_source_port_id
     assert.throws(()=>electricalSources(cj,m,nodes),/supply_reference/)
   }
