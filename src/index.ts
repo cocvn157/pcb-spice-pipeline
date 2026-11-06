@@ -4,7 +4,7 @@ export type { PipelineOptions, PipelineModeling, PipelineResult } from './genera
 export type { Solver, SolverRequest, SolverResult, RunSolver, FileMap } from './solver.js'
 export type { IbisSources } from './model-source.js'
 export { generateReport } from './viewer.js'
-export type { Modeling } from './geometry.js'
+export type { Modeling, LaneGroup } from './geometry.js'
 export { assessDdr, resolveDdrAssessments } from './ddr.js'
 export type { DdrAssessmentConfig, DdrAssessment, DdrCapture, ResolvedDdrAssessment } from './ddr.js'
 export type { CircuitJson } from './schema.js'

@@ -65,14 +65,18 @@ export interface LaneMapping {
   port: string; sourceTraceId: string; pcbTraceId: string; from: string; to: string
   pcbPorts: string[]; stages: RouteStage[]; originalRoute: RoutedPoint[]
 }
+export interface LaneGroup {
+  lanes: string[]; laneIndices: number[]; stages: string[]
+}
 export interface GeometryCell {
   stage: number; profile: string; relativePermittivity: number; conductivitySm: number
   conductors: { name: string; lengthM: number; widthM: number; thicknessM: number; yM: number; zM: number; conductivitySm?: number }[]
   routedCopper?: RoutedCopper
+  lanes?: string[]; laneIndices?: number[]
 }
 export interface Geometry {
   stackup?: BoardStackup
-  cells: GeometryCell[]; mappings: LaneMapping[]
+  cells: GeometryCell[]; mappings: LaneMapping[]; laneGroups?: LaneGroup[]
   units: { circuitJson: 'mm'; geometry: 'm'; conductivity: 'S/m' }; approximations: string[]
 }
 
@@ -192,16 +196,27 @@ export function geometryFromCircuitJson(cj: CircuitJson,modeling: Modeling): Geo
     mappings.push({port:lane.port,sourceTraceId:src.source_trace_id,pcbTraceId:traces[0].pcb_trace_id,from:from.source_port_id,to:to.source_port_id,pcbPorts:ports.map(p=>p.pcb_port_id),stages,originalRoute:route})
   }
   if(m.reduction==='routed-copper') return {...routedCopperGeometry(cj,m,mappings),stackup}
-  if(routes.some(route=>route.length!==routes[0].length||route.some((s,i)=>s.profile!==routes[0][i].profile))) fail('route_topology','Selected routes must have identical ordered layer/via stage topology')
-  const cells: GeometryCell[]=routes[0].map((_,i)=>{
-    const signals=routes.map(r=>r[i]),profile=m.profiles![signals[0].profile]
-    if(!profile) fail('return_geometry',`Missing ${signals[0].profile} return/material profile`)
-    const conductors=signals.map((s,j)=>({name:`sig${j}`,lengthM:s.lengthMm/1000,widthM:s.widthMm/1000,thicknessM:s.thicknessMm/1000,conductivitySm:s.conductivitySm??defaultCopperConductivitySm,yM:(j-(signals.length-1)/2)*profile.spacingMm/1000,zM:0}))
-    conductors.push({name:'return',lengthM:Math.max(...signals.map(s=>s.lengthMm))/1000*profile.return.lengthFactor,widthM:profile.return.widthMm/1000,thicknessM:profile.return.thicknessMm/1000,conductivitySm:defaultCopperConductivitySm,yM:profile.return.centerYMm/1000,zM:profile.return.centerZMm/1000})
-    for(let a=0;a<conductors.length;a++) for(let b=a+1;b<conductors.length;b++) if(Math.abs(conductors[a].yM-conductors[b].yM)<(conductors[a].widthM+conductors[b].widthM)/2 && Math.abs(conductors[a].zM-conductors[b].zM)<(conductors[a].thicknessM+conductors[b].thicknessM)/2) fail('conductor_overlap',`Stage ${i}: ${conductors[a].name}/${conductors[b].name} overlap`)
-    return {stage:i,profile:signals[0].profile,conductors,relativePermittivity:profile.relativePermittivity,conductivitySm:m.conductivitySm}
+  const laneGroups: LaneGroup[]=[]
+  routes.forEach((route,laneIndex)=>{
+    const stages=route.map(s=>s.profile),key=stages.join('\0')
+    const existing=laneGroups.find(group=>group.stages.join('\0')===key)
+    if(existing) {existing.lanes.push(mappings[laneIndex].port);existing.laneIndices.push(laneIndex)}
+    else laneGroups.push({lanes:[mappings[laneIndex].port],laneIndices:[laneIndex],stages})
   })
-  return {stackup,cells,mappings,units:{circuitJson:'mm',geometry:'m',conductivity:'S/m'},approximations:['Actual stage lengths, widths and ordered layer transitions from routed Circuit JSON; routes straightened within each stage','Uniform declared signal center spacing per profile; actual varying route spacing is not extracted','Finite parallel return bar per stage; isolated neutral conductor group, with ideal reference joins between stages','Homogeneous explicit effective permittivity per stage; no dielectric loss, roughness, plane cutouts, unselected neighboring nets or bend coupling','Via rectangle preserves assumed plated barrel metal area; pads and unconnected through-via stubs omitted','Whole-stage matrices divided into uniform pi sections; constant R/L at modelHz; frequency dispersion not fitted']}
+  const cells: GeometryCell[]=[]
+  for(const group of laneGroups) {
+    group.stages.forEach((profileName,stageIndex)=>{
+      const i=cells.length,signals=group.laneIndices.map(laneIndex=>routes[laneIndex][stageIndex]),profile=m.profiles![profileName]
+      if(!profile) fail('return_geometry',`Missing ${profileName} return/material profile`)
+      const conductors=signals.map((s,j)=>({name:`sig${j}`,lengthM:s.lengthMm/1000,widthM:s.widthMm/1000,thicknessM:s.thicknessMm/1000,conductivitySm:s.conductivitySm??defaultCopperConductivitySm,yM:(j-(signals.length-1)/2)*profile.spacingMm/1000,zM:0}))
+      conductors.push({name:'return',lengthM:Math.max(...signals.map(s=>s.lengthMm))/1000*profile.return.lengthFactor,widthM:profile.return.widthMm/1000,thicknessM:profile.return.thicknessMm/1000,conductivitySm:defaultCopperConductivitySm,yM:profile.return.centerYMm/1000,zM:profile.return.centerZMm/1000})
+      for(let a=0;a<conductors.length;a++) for(let b=a+1;b<conductors.length;b++) if(Math.abs(conductors[a].yM-conductors[b].yM)<(conductors[a].widthM+conductors[b].widthM)/2 && Math.abs(conductors[a].zM-conductors[b].zM)<(conductors[a].thicknessM+conductors[b].thicknessM)/2) fail('conductor_overlap',`Stage ${i}: ${conductors[a].name}/${conductors[b].name} overlap`)
+      cells.push({stage:i,profile:profileName,conductors,relativePermittivity:profile.relativePermittivity,conductivitySm:m.conductivitySm,...(laneGroups.length>1?{lanes:group.lanes,laneIndices:group.laneIndices}:{})})
+    })
+  }
+  const approximations=['Actual stage lengths, widths and ordered layer transitions from routed Circuit JSON; routes straightened within each stage','Uniform declared signal center spacing per profile; actual varying route spacing is not extracted','Finite parallel return bar per stage; isolated neutral conductor group, with ideal reference joins between stages','Homogeneous explicit effective permittivity per stage; no dielectric loss, roughness, plane cutouts, unselected neighboring nets or bend coupling','Via rectangle preserves assumed plated barrel metal area; pads and unconnected through-via stubs omitted','Whole-stage matrices divided into uniform pi sections; constant R/L at modelHz; frequency dispersion not fitted']
+  if(laneGroups.length>1) approximations.push(`Lanes grouped by ordered layer/via stage topology (${laneGroups.map(g=>` on ${g.stages.join(' -> ')}`).join('; ')}); electromagnetic coupling between distinct stage-topology groups is omitted`)
+  return {stackup,cells,mappings,laneGroups,units:{circuitJson:'mm',geometry:'m',conductivity:'S/m'},approximations}
 }
 export function fastHenryDeck(cell: GeometryCell,extraction: ExtractionSettings): string {
   if(cell.routedCopper) return copperFastHenryDeck(cell,extraction)
