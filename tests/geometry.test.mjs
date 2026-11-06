@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
 const readJson=async path=>JSON.parse(await readFile(new URL(path,import.meta.url),'utf8'))
-import {geometryFromCircuitJson} from '../src/geometry.js'
+import {geometryFromCircuitJson,fastHenryDeck,fasterCapDeck} from '../src/geometry.js'
+import {modelingFromCircuitJson} from '../src/modeling.js'
+import {validateCircuitRecords} from '../src/circuit-schema.mjs'
 const small={circuitJson:await readJson('./fixtures/straight.circuit.json'),modeling:await readJson('./fixtures/straight.modeling.json')}
 const real={circuitJson:await readJson('./fixtures/am3352.circuit.json'),modeling:await readJson('./fixtures/am3352.modeling.json')}
 test('actual original routed DQS lengths and 4 physical endpoints are retained',()=>{
@@ -45,4 +47,52 @@ test('discontinuous or zero-length vias are rejected',()=>{
   const cj=structuredClone(real.circuitJson),trace=cj.find(e=>e.type==='pcb_trace'&&e.source_trace_id==='source_trace_15'),via=trace.route.find(v=>v.route_type==='via')
   via.from_layer='inner1'
   assert.throws(()=>geometryFromCircuitJson(cj,real.modeling),/via_geometry/)
+})
+test('stripline profiles accept multiple return bars and tie them in parallel across FastHenry and FasterCap',()=>{
+  const m=structuredClone(small.modeling)
+  m.lanes=[m.lanes[0]]
+  const topBar={...m.profiles.top.return,centerZMm:.4,thicknessMm:.0152}
+  const bottomBar={...m.profiles.top.return,centerZMm:-.4,thicknessMm:.0152}
+  m.profiles.top={...m.profiles.top,return:[topBar,bottomBar]}
+  const g=geometryFromCircuitJson(small.circuitJson,m),cell=g.cells[0]
+  assert.equal(cell.conductors.length,2)
+  assert.equal(cell.conductors[1].bars.length,2)
+  assert.ok(Math.abs(cell.conductors[1].thicknessM-.0000304)<1e-12)
+  const fh=fastHenryDeck(cell,m.extraction)
+  assert.equal((fh.match(/\.external /g)??[]).length,2)
+  assert.match(fh,/N1_1a x=0 y=0 z=-0\.0004/)
+  assert.match(fh,/\.equiv N1a N1_1a/)
+  assert.match(fh,/\.equiv N1b N1_1b/)
+  const fcSingle=fasterCapDeck(geometryFromCircuitJson(small.circuitJson,{...m,profiles:{...m.profiles,top:{...m.profiles.top,return:topBar}}}).cells[0],m.extraction)
+  const fcDual=fasterCapDeck(cell,m.extraction)
+  assert.equal((fcDual['return.txt'].match(/^Q return /gm)??[]).length,2*(fcSingle['return.txt'].match(/^Q return /gm)??[]).length)
+  assert.throws(()=>geometryFromCircuitJson(small.circuitJson,{...m,profiles:{...m.profiles,top:{...m.profiles.top,return:[topBar,{...bottomBar,centerZMm:.4}]}}}),/conductor_overlap/)
+
+  const experiment={
+    type:'simulation_experiment',simulation_experiment_id:'stripline_exp',name:'Stripline',
+    experiment_type:'spice_transient_analysis',spice_engine:'pcb_spice',end_time_ms:1,time_per_step:.01,
+    pcb_spice_channel:{
+      reduction:'straightened-stages',sections:4,reference_source_port_id:'p0',
+      lanes:[{name:'DQ0',driver_source_port_id:'p0',receiver_source_port_id:'p2'}],
+      extraction:{
+        minimum_frequency_hz:1,maximum_frequency_hz:1e9,model_frequency_hz:1e8,
+        filaments:3,refinement_filaments:5,convergence_tolerance:.05,capacitance_tolerance:.02,
+        reciprocity_tolerance:.025,dc_resistance_tolerance:.002,max_panel_length_mm:2,
+      },
+      straightened_stage_profiles:{
+        inner2:{
+          spacing_mm:.5,relative_permittivity:4.1,
+          return:[
+            {width_mm:5,thickness_mm:.0152,length_factor:1,center_y_mm:0,center_z_mm:.4},
+            {width_mm:5,thickness_mm:.0152,length_factor:1,center_y_mm:0,center_z_mm:-.4},
+          ],
+        },
+      },
+    },
+  }
+  const records=[...small.circuitJson,experiment]
+  validateCircuitRecords(records)
+  const parsed=modelingFromCircuitJson(records)
+  assert.ok(Array.isArray(parsed.profiles.inner2.return))
+  assert.equal(parsed.profiles.inner2.return.length,2)
 })

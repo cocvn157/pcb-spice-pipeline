@@ -12,15 +12,16 @@ export interface ExtractionSettings {
   capTolerance: number; maxPanelLengthMm: number; reciprocityTolerance: number; dcResistanceTolerance: number
   groundMeshMm?: number
 }
+export interface ReturnBarProfile {
+  widthMm: number; thicknessMm: number; lengthFactor: number; centerYMm: number; centerZMm: number
+}
 export interface Modeling {
   ddrAssessments?: DdrAssessmentConfig[]
   reduction: 'straightened-stages' | 'routed-copper'; sections: number
   relativePermittivity?: number
   groundReturn?: PortSelector
   lanes: { port: string; from: PortSelector; to: PortSelector; sourceTraceId?: string; driverPort?: string; receiverPort?: string }[]
-  profiles?: Record<string, { spacingMm: number; relativePermittivity: number; return: {
-    widthMm: number; thicknessMm: number; lengthFactor: number; centerYMm: number; centerZMm: number
-  } }>
+  profiles?: Record<string, { spacingMm: number; relativePermittivity: number; return: ReturnBarProfile | ReturnBarProfile[] }>
   extraction: ExtractionSettings
   viaPlatingMm?: number; viaEquivalentWidthMm?: number; omitThroughViaStubs?: boolean
   channelReference?: PortSelector
@@ -65,9 +66,12 @@ export interface LaneMapping {
   port: string; sourceTraceId: string; pcbTraceId: string; from: string; to: string
   pcbPorts: string[]; stages: RouteStage[]; originalRoute: RoutedPoint[]
 }
+export interface ConductorBar {
+  lengthM: number; widthM: number; thicknessM: number; yM: number; zM: number; conductivitySm?: number
+}
 export interface GeometryCell {
   stage: number; profile: string; relativePermittivity: number; conductivitySm: number
-  conductors: { name: string; lengthM: number; widthM: number; thicknessM: number; yM: number; zM: number; conductivitySm?: number }[]
+  conductors: (ConductorBar & { name: string; bars?: ConductorBar[] })[]
   routedCopper?: RoutedCopper
 }
 export interface Geometry {
@@ -90,9 +94,14 @@ export function validateModeling(m: Modeling): void {
   else if(!m.profiles) fail('return_geometry','Explicit profiles with reference conductor geometry and permittivity required')
   for(const [name,p] of Object.entries(m.reduction==='routed-copper'?{}:m.profiles!)) {
     positive(p.spacingMm,`${name} spacingMm`);positive(p.relativePermittivity,`${name} relativePermittivity`)
-    if(!p.return) fail('return_geometry',`${name}: explicit finite return required`)
-    for(const key of ['widthMm','thicknessMm','lengthFactor'] as const) positive(p.return[key],`${name}.return.${key}`)
-    finite(p.return.centerYMm,`${name}.return.centerYMm`);finite(p.return.centerZMm,`${name}.return.centerZMm`)
+    const bars=Array.isArray(p.return)?p.return:p.return?[p.return]:[]
+    if(!bars.length) fail('return_geometry',`${name}: explicit finite return required`)
+    bars.forEach((bar,i)=>{
+      const prefix=Array.isArray(p.return)?`${name}.return[${i}]`:`${name}.return`
+      if(!bar) fail('return_geometry',`${prefix}: explicit finite return required`)
+      for(const key of ['widthMm','thicknessMm','lengthFactor'] as const) positive(bar[key],`${prefix}.${key}`)
+      finite(bar.centerYMm,`${prefix}.centerYMm`);finite(bar.centerZMm,`${prefix}.centerZMm`)
+    })
   }
   if(!m.extraction) fail('extraction','Explicit mesh/frequency/model settings required')
   for(const key of ['minimumHz','maximumHz','modelHz','filaments','refinementFilaments','convergenceTolerance','capTolerance','maxPanelLengthMm','reciprocityTolerance','dcResistanceTolerance'] as const) positive(m.extraction[key],`extraction.${key}`)
@@ -196,9 +205,18 @@ export function geometryFromCircuitJson(cj: CircuitJson,modeling: Modeling): Geo
   const cells: GeometryCell[]=routes[0].map((_,i)=>{
     const signals=routes.map(r=>r[i]),profile=m.profiles![signals[0].profile]
     if(!profile) fail('return_geometry',`Missing ${signals[0].profile} return/material profile`)
-    const conductors=signals.map((s,j)=>({name:`sig${j}`,lengthM:s.lengthMm/1000,widthM:s.widthMm/1000,thicknessM:s.thicknessMm/1000,conductivitySm:s.conductivitySm??defaultCopperConductivitySm,yM:(j-(signals.length-1)/2)*profile.spacingMm/1000,zM:0}))
-    conductors.push({name:'return',lengthM:Math.max(...signals.map(s=>s.lengthMm))/1000*profile.return.lengthFactor,widthM:profile.return.widthMm/1000,thicknessM:profile.return.thicknessMm/1000,conductivitySm:defaultCopperConductivitySm,yM:profile.return.centerYMm/1000,zM:profile.return.centerZMm/1000})
-    for(let a=0;a<conductors.length;a++) for(let b=a+1;b<conductors.length;b++) if(Math.abs(conductors[a].yM-conductors[b].yM)<(conductors[a].widthM+conductors[b].widthM)/2 && Math.abs(conductors[a].zM-conductors[b].zM)<(conductors[a].thicknessM+conductors[b].thicknessM)/2) fail('conductor_overlap',`Stage ${i}: ${conductors[a].name}/${conductors[b].name} overlap`)
+    const conductors: GeometryCell['conductors']=signals.map((s,j)=>({name:`sig${j}`,lengthM:s.lengthMm/1000,widthM:s.widthMm/1000,thicknessM:s.thicknessMm/1000,conductivitySm:s.conductivitySm??defaultCopperConductivitySm,yM:(j-(signals.length-1)/2)*profile.spacingMm/1000,zM:0}))
+    const maxSignalLengthM=Math.max(...signals.map(s=>s.lengthMm))/1000
+    const returnBars=(Array.isArray(profile.return)?profile.return:[profile.return]).map(bar=>({
+      lengthM:maxSignalLengthM*bar.lengthFactor,widthM:bar.widthMm/1000,thicknessM:bar.thicknessMm/1000,
+      conductivitySm:defaultCopperConductivitySm,yM:bar.centerYMm/1000,zM:bar.centerZMm/1000,
+    }))
+    const firstReturn=returnBars[0]
+    const parallelConductance=returnBars.reduce((sum,bar)=>sum+(bar.conductivitySm??defaultCopperConductivitySm)*bar.widthM*bar.thicknessM/bar.lengthM,0)
+    const equivalentThicknessM=firstReturn.lengthM/((firstReturn.conductivitySm??defaultCopperConductivitySm)*firstReturn.widthM)*parallelConductance
+    conductors.push({name:'return',...firstReturn,thicknessM:returnBars.length===1?firstReturn.thicknessM:equivalentThicknessM,...(returnBars.length>1?{bars:returnBars}:{})})
+    const physicalBars=[...conductors.slice(0,-1),...returnBars.map((bar,j)=>({...bar,name:returnBars.length>1?`return[${j}]`:'return'}))]
+    for(let a=0;a<physicalBars.length;a++) for(let b=a+1;b<physicalBars.length;b++) if(Math.abs(physicalBars[a].yM-physicalBars[b].yM)<(physicalBars[a].widthM+physicalBars[b].widthM)/2 && Math.abs(physicalBars[a].zM-physicalBars[b].zM)<(physicalBars[a].thicknessM+physicalBars[b].thicknessM)/2) fail('conductor_overlap',`Stage ${i}: ${physicalBars[a].name}/${physicalBars[b].name} overlap`)
     return {stage:i,profile:signals[0].profile,conductors,relativePermittivity:profile.relativePermittivity,conductivitySm:m.conductivitySm}
   })
   return {stackup,cells,mappings,units:{circuitJson:'mm',geometry:'m',conductivity:'S/m'},approximations:['Actual stage lengths, widths and ordered layer transitions from routed Circuit JSON; routes straightened within each stage','Uniform declared signal center spacing per profile; actual varying route spacing is not extracted','Finite parallel return bar per stage; isolated neutral conductor group, with ideal reference joins between stages','Homogeneous explicit effective permittivity per stage; no dielectric loss, roughness, plane cutouts, unselected neighboring nets or bend coupling','Via rectangle preserves assumed plated barrel metal area; pads and unconnected through-via stubs omitted','Whole-stage matrices divided into uniform pi sections; constant R/L at modelHz; frequency dispersion not fitted']}
@@ -206,7 +224,14 @@ export function geometryFromCircuitJson(cj: CircuitJson,modeling: Modeling): Geo
 export function fastHenryDeck(cell: GeometryCell,extraction: ExtractionSettings): string {
   if(cell.routedCopper) return copperFastHenryDeck(cell,extraction)
   const lines=[`* PCB pipeline: ${cell.conductors.length} primitive paths, all oriented +x`,'.units m',`.default sigma=${cell.conductivitySm} nhinc=${extraction.filaments} nwinc=${extraction.filaments}`]
-  for(const [i,c] of cell.conductors.entries()) lines.push(`N${i}a x=0 y=${c.yM} z=${c.zM}`,`N${i}b x=${c.lengthM} y=${c.yM} z=${c.zM}`,`E${i} N${i}a N${i}b w=${c.widthM} h=${c.thicknessM} sigma=${c.conductivitySm??cell.conductivitySm} wx=0 wy=1 wz=0`)
+  for(const [i,c] of cell.conductors.entries()) {
+    const bars=c.bars??[c]
+    bars.forEach((bar,j)=>{
+      const na=j===0?`N${i}a`:`N${i}_${j}a`,nb=j===0?`N${i}b`:`N${i}_${j}b`,edge=j===0?`E${i}`:`E${i}_${j}`
+      lines.push(`${na} x=0 y=${bar.yM} z=${bar.zM}`,`${nb} x=${bar.lengthM} y=${bar.yM} z=${bar.zM}`,`${edge} ${na} ${nb} w=${bar.widthM} h=${bar.thicknessM} sigma=${bar.conductivitySm??cell.conductivitySm} wx=0 wy=1 wz=0`)
+      if(j>0) lines.push(`.equiv N${i}a ${na}`,`.equiv N${i}b ${nb}`)
+    })
+  }
   for(let i=0;i<cell.conductors.length;i++) lines.push(`.external N${i}a N${i}b`)
   lines.push(`.freq fmin=${extraction.minimumHz} fmax=${extraction.maximumHz} ndec=1`,'.end')
   return lines.join('\n')+'\n'
@@ -215,18 +240,21 @@ export function fasterCapDeck(cell: GeometryCell,extraction: ExtractionSettings)
   if(cell.routedCopper) return copperFasterCapDeck(cell,extraction)
   const files: Record<string,string>={},list=['* 3D conductor surfaces; metres; homogeneous dielectric']
   for(const c of cell.conductors) {
-    const rows=['* closed box conductor surface'],n=Math.ceil(c.lengthM/(extraction.maxPanelLengthMm/1000))
-    const y0=c.yM-c.widthM/2,y1=c.yM+c.widthM/2,z0=c.zM-c.thicknessM/2,z1=c.zM+c.thicknessM/2
+    const rows=['* closed box conductor surface'],bars=c.bars??[c]
     const quad=(vs: [number,number,number][])=>rows.push(`Q ${c.name} ${vs.flat().join(' ')}`)
-    for(let k=0;k<n;k++) {
-      const a=c.lengthM*k/n,b=c.lengthM*(k+1)/n
-      quad([[a,y0,z0],[b,y0,z0],[b,y1,z0],[a,y1,z0]])
-      quad([[a,y1,z1],[b,y1,z1],[b,y0,z1],[a,y0,z1]])
-      quad([[a,y0,z1],[b,y0,z1],[b,y0,z0],[a,y0,z0]])
-      quad([[a,y1,z0],[b,y1,z0],[b,y1,z1],[a,y1,z1]])
+    for(const bar of bars) {
+      const n=Math.ceil(bar.lengthM/(extraction.maxPanelLengthMm/1000))
+      const y0=bar.yM-bar.widthM/2,y1=bar.yM+bar.widthM/2,z0=bar.zM-bar.thicknessM/2,z1=bar.zM+bar.thicknessM/2
+      for(let k=0;k<n;k++) {
+        const a=bar.lengthM*k/n,b=bar.lengthM*(k+1)/n
+        quad([[a,y0,z0],[b,y0,z0],[b,y1,z0],[a,y1,z0]])
+        quad([[a,y1,z1],[b,y1,z1],[b,y0,z1],[a,y0,z1]])
+        quad([[a,y0,z1],[b,y0,z1],[b,y0,z0],[a,y0,z0]])
+        quad([[a,y1,z0],[b,y1,z0],[b,y1,z1],[a,y1,z1]])
+      }
+      quad([[0,y0,z0],[0,y1,z0],[0,y1,z1],[0,y0,z1]])
+      quad([[bar.lengthM,y0,z1],[bar.lengthM,y1,z1],[bar.lengthM,y1,z0],[bar.lengthM,y0,z0]])
     }
-    quad([[0,y0,z0],[0,y1,z0],[0,y1,z1],[0,y0,z1]])
-    quad([[c.lengthM,y0,z1],[c.lengthM,y1,z1],[c.lengthM,y1,z0],[c.lengthM,y0,z0]])
     files[`${c.name}.txt`]=rows.join('\n')+'\n'
     list.push(`C ${c.name}.txt ${cell.relativePermittivity} 0 0 0`)
   }

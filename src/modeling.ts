@@ -5,10 +5,11 @@ import { fail } from './matrices.mjs'
 
 const positive = z.number().finite().positive()
 const id = z.string().min(1)
+const returnBar = z.object({ width_mm: positive, thickness_mm: positive, length_factor: positive,
+  center_y_mm: z.number().finite(), center_z_mm: z.number().finite() })
 const profile = z.object({
   spacing_mm: positive, relative_permittivity: positive,
-  return: z.object({ width_mm: positive, thickness_mm: positive, length_factor: positive,
-    center_y_mm: z.number().finite(), center_z_mm: z.number().finite() }),
+  return: z.union([returnBar, z.array(returnBar).min(1)]),
 })
 const channelSchema = z.object({
   reduction: z.enum(['routed-copper', 'straightened-stages']),
@@ -78,10 +79,13 @@ export function modelingFromCircuitJson(circuitJson: CircuitJson): PipelineModel
   if (channel.via_plating_thickness_mm !== undefined) modeling.viaPlatingMm = channel.via_plating_thickness_mm
   if (channel.via_equivalent_width_mm !== undefined) modeling.viaEquivalentWidthMm = channel.via_equivalent_width_mm
   if (channel.omit_through_via_stubs !== undefined) modeling.omitThroughViaStubs = channel.omit_through_via_stubs
+  const mapReturnBar = (bar: z.infer<typeof returnBar>) => ({
+    widthMm: bar.width_mm, thicknessMm: bar.thickness_mm, lengthFactor: bar.length_factor,
+    centerYMm: bar.center_y_mm, centerZMm: bar.center_z_mm,
+  })
   if (channel.straightened_stage_profiles !== undefined) modeling.profiles = Object.fromEntries(Object.entries(channel.straightened_stage_profiles).map(([name, stageProfile]) => [name, {
     spacingMm: stageProfile.spacing_mm, relativePermittivity: stageProfile.relative_permittivity,
-    return: { widthMm: stageProfile.return.width_mm, thicknessMm: stageProfile.return.thickness_mm, lengthFactor: stageProfile.return.length_factor,
-      centerYMm: stageProfile.return.center_y_mm, centerZMm: stageProfile.return.center_z_mm },
+    return: Array.isArray(stageProfile.return) ? stageProfile.return.map(mapReturnBar) : mapReturnBar(stageProfile.return),
   }]))
   return modeling
 }
