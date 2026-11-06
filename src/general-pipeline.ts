@@ -52,11 +52,29 @@ export async function runPipeline({circuitJson,modeling,ibisSources,runSolver,on
     if(expected!==undefined&&source.evidence.sourceSha256!==expected.toLowerCase()) fail('vendor_hash',`${path}: IBIS asset bytes differ from modeling.ibisModelAssetSha256`)
     loaded.push(source)
   }
+  const components=new Map(circuitJson.filter(e=>e.type==='source_component').map(e=>[e.source_component_id,e]))
   const compiled=declarations.plans.map(plan=>plan.models.map(model=>{
     const index=declarations.models.findIndex(selected=>selected.pipelineId===model.pipelineId)
     const input=modelRunDefinition(model,plan),source=loaded[index]
     input.definition.source={file:source.evidence.ibsFile,sha256:source.evidence.sourceSha256}
-    const result=converter.convertIbisModelToSpice(source.bytes,input.definition,input.run)
+    let result: ReturnType<typeof converter.convertIbisModelToSpice>
+    try {
+      result=converter.convertIbisModelToSpice(source.bytes,input.definition,input.run)
+    } catch (error) {
+      if(error instanceof Error&&'code' in error&&error.code==='missing_run_state') {
+        const entry=Object.entries(model.ibis_pin_name_to_source_port_id).find(([,portId])=>error.message.startsWith(`${portId}: `))
+        if(entry) {
+          const [ibisPin,portId]=entry,port=declarations.ports.get(portId),component=components.get(model.source_component_id)
+          const ibisSignal=converter.parseIbis(source.text).components[model.ibis_component_name]?.pins[ibisPin]?.signal
+          const componentName=component?.name??model.source_component_id
+          const pinName=ibisSignal&&port?.name===ibisSignal&&ibisPin!==ibisSignal&&port.port_hints?.includes(ibisPin)?ibisPin:port?.name??portId
+          const ibisLabel=ibisSignal&&ibisSignal!==ibisPin?(ibisPin===pinName?ibisSignal:ibisSignal===pinName?ibisPin:`${ibisPin} ${ibisSignal}`):ibisPin
+          const detail=error.message.slice(portId.length+2)
+          throw new converter.IbisError('missing_run_state',`${componentName}.${pinName} (IBIS ${ibisLabel}): ${detail} (${portId}); set ibisPinStates (e.g. { isOutput: false })`)
+        }
+      }
+      throw error
+    }
     return {...result,name:model.ibis_component_name,pipelineId:model.pipelineId,input,sourceEvidence:loaded[index].evidence}
   }))
   for(const [i,plan] of declarations.plans.entries()) validateProbeScope(plan,geometry,compiled[i],declarations.nodes,electrical)
