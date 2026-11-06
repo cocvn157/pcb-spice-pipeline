@@ -4,6 +4,7 @@ import { fail } from './matrices.mjs'
 import { routedCopperGeometry, copperFastHenryDeck, copperFasterCapDeck } from './copper.js'
 import type { RoutedCopper } from './copper.js'
 import type { DdrAssessmentConfig } from './ddr.js'
+import { groundPourLayers, measuredLaneSpacingMm, stackupStageReturn } from './stage-returns.js'
 
 export type PortSelector = { sourcePortId: string; component?: never; port?: never } | { sourcePortId?: never; component: string; port: string }
 export interface ExtractionSettings {
@@ -67,7 +68,9 @@ export interface LaneMapping {
 }
 export interface GeometryCell {
   stage: number; profile: string; relativePermittivity: number; conductivitySm: number
-  conductors: { name: string; lengthM: number; widthM: number; thicknessM: number; yM: number; zM: number; conductivitySm?: number }[]
+  /** `parts`: parallel boxes joined at both ends forming one conductor (e.g. a
+   * stripline return in both adjacent planes). The scalar fields are part 0. */
+  conductors: { name: string; lengthM: number; widthM: number; thicknessM: number; yM: number; zM: number; conductivitySm?: number; parts?: { widthM: number; thicknessM: number; yM: number; zM: number }[] }[]
   routedCopper?: RoutedCopper
 }
 export interface Geometry {
@@ -87,8 +90,7 @@ export function validateModeling(m: Modeling): void {
     positive(m.relativePermittivity,'relativePermittivity (homogeneous dielectric approximation)')
     positive(m.extraction?.groundMeshMm,'extraction.groundMeshMm')
   }
-  else if(!m.profiles) fail('return_geometry','Explicit profiles with reference conductor geometry and permittivity required')
-  for(const [name,p] of Object.entries(m.reduction==='routed-copper'?{}:m.profiles!)) {
+  for(const [name,p] of Object.entries(m.reduction==='routed-copper'?{}:m.profiles??{})) {
     positive(p.spacingMm,`${name} spacingMm`);positive(p.relativePermittivity,`${name} relativePermittivity`)
     if(!p.return) fail('return_geometry',`${name}: explicit finite return required`)
     for(const key of ['widthMm','thicknessMm','lengthFactor'] as const) positive(p.return[key],`${name}.return.${key}`)
@@ -193,20 +195,34 @@ export function geometryFromCircuitJson(cj: CircuitJson,modeling: Modeling): Geo
   }
   if(m.reduction==='routed-copper') return {...routedCopperGeometry(cj,m,mappings),stackup}
   if(routes.some(route=>route.length!==routes[0].length||route.some((s,i)=>s.profile!==routes[0][i].profile))) fail('route_topology','Selected routes must have identical ordered layer/via stage topology')
+  let grounds: Set<string>|undefined
+  const groundLayers=()=>grounds??=groundPourLayers(cj,m.channelReference?selectPort(cj,m.channelReference).source_port_id:undefined)
   const cells: GeometryCell[]=routes[0].map((_,i)=>{
-    const signals=routes.map(r=>r[i]),profile=m.profiles![signals[0].profile]
-    if(!profile) fail('return_geometry',`Missing ${signals[0].profile} return/material profile`)
-    const conductors=signals.map((s,j)=>({name:`sig${j}`,lengthM:s.lengthMm/1000,widthM:s.widthMm/1000,thicknessM:s.thicknessMm/1000,conductivitySm:s.conductivitySm??defaultCopperConductivitySm,yM:(j-(signals.length-1)/2)*profile.spacingMm/1000,zM:0}))
-    conductors.push({name:'return',lengthM:Math.max(...signals.map(s=>s.lengthMm))/1000*profile.return.lengthFactor,widthM:profile.return.widthMm/1000,thicknessM:profile.return.thicknessMm/1000,conductivitySm:defaultCopperConductivitySm,yM:profile.return.centerYMm/1000,zM:profile.return.centerZMm/1000})
-    for(let a=0;a<conductors.length;a++) for(let b=a+1;b<conductors.length;b++) if(Math.abs(conductors[a].yM-conductors[b].yM)<(conductors[a].widthM+conductors[b].widthM)/2 && Math.abs(conductors[a].zM-conductors[b].zM)<(conductors[a].thicknessM+conductors[b].thicknessM)/2) fail('conductor_overlap',`Stage ${i}: ${conductors[a].name}/${conductors[b].name} overlap`)
-    return {stage:i,profile:signals[0].profile,conductors,relativePermittivity:profile.relativePermittivity,conductivitySm:m.conductivitySm}
+    const signals=routes.map(r=>r[i]),name=signals[0].profile,profile=m.profiles?.[name]
+    // Without a declared profile, a wire stage returns in the adjacent ground
+    // planes from pcb_stackup; via stages still need an explicit `via` profile.
+    if(!profile&&signals[0].kind!=='wire') fail('return_geometry',`Missing ${name} return/material profile; via stages need an explicit straightened-stage profile`)
+    const derived=profile?undefined:stackupStageReturn(stackup,groundLayers(),name)
+    const spacingMm=profile?profile.spacingMm:signals.length>1?measuredLaneSpacingMm(mappings.map(l=>l.originalRoute),name):0
+    const length=Math.max(...signals.map(s=>s.lengthMm))/1000
+    const conductors: GeometryCell['conductors']=signals.map((s,j)=>({name:`sig${j}`,lengthM:s.lengthMm/1000,widthM:s.widthMm/1000,thicknessM:s.thicknessMm/1000,conductivitySm:s.conductivitySm??defaultCopperConductivitySm,yM:(j-(signals.length-1)/2)*spacingMm/1000,zM:0}))
+    const parts=profile?[{widthM:profile.return.widthMm/1000,thicknessM:profile.return.thicknessMm/1000,yM:profile.return.centerYMm/1000,zM:profile.return.centerZMm/1000}]
+      :derived!.parts.map(p=>({widthM:p.widthMm/1000,thicknessM:p.thicknessMm/1000,yM:0,zM:p.centerZMm/1000}))
+    conductors.push({name:'return',lengthM:length*(profile?.return.lengthFactor??1),...parts[0],conductivitySm:defaultCopperConductivitySm,...(parts.length>1?{parts}:{})})
+    const boxes=conductors.flatMap(c=>(c.parts??[c]).map(p=>({name:c.name,...p})))
+    for(let a=0;a<boxes.length;a++) for(let b=a+1;b<boxes.length;b++) if(Math.abs(boxes[a].yM-boxes[b].yM)<(boxes[a].widthM+boxes[b].widthM)/2 && Math.abs(boxes[a].zM-boxes[b].zM)<(boxes[a].thicknessM+boxes[b].thicknessM)/2) fail('conductor_overlap',`Stage ${i}: ${boxes[a].name}/${boxes[b].name} overlap`)
+    return {stage:i,profile:name,conductors,relativePermittivity:profile?profile.relativePermittivity:derived!.relativePermittivity,conductivitySm:m.conductivitySm}
   })
-  return {stackup,cells,mappings,units:{circuitJson:'mm',geometry:'m',conductivity:'S/m'},approximations:['Actual stage lengths, widths and ordered layer transitions from routed Circuit JSON; routes straightened within each stage','Uniform declared signal center spacing per profile; actual varying route spacing is not extracted','Finite parallel return bar per stage; isolated neutral conductor group, with ideal reference joins between stages','Homogeneous explicit effective permittivity per stage; no dielectric loss, roughness, plane cutouts, unselected neighboring nets or bend coupling','Via rectangle preserves assumed plated barrel metal area; pads and unconnected through-via stubs omitted','Whole-stage matrices divided into uniform pi sections; constant R/L at modelHz; frequency dispersion not fitted']}
+  return {stackup,cells,mappings,units:{circuitJson:'mm',geometry:'m',conductivity:'S/m'},approximations:['Actual stage lengths, widths and ordered layer transitions from routed Circuit JSON; routes straightened within each stage','Uniform signal center spacing per stage (declared, or the median routed spacing between lanes); actual varying route spacing is not extracted','Finite parallel return bar per stage (declared profile, or one 2 mm bar in each adjacent ground-pour layer from pcb_stackup); isolated neutral conductor group, with ideal reference joins between stages','Homogeneous explicit effective permittivity per stage; no dielectric loss, roughness, plane cutouts, unselected neighboring nets or bend coupling','Via rectangle preserves assumed plated barrel metal area; pads and unconnected through-via stubs omitted','Whole-stage matrices divided into uniform pi sections; constant R/L at modelHz; frequency dispersion not fitted']}
 }
 export function fastHenryDeck(cell: GeometryCell,extraction: ExtractionSettings): string {
   if(cell.routedCopper) return copperFastHenryDeck(cell,extraction)
   const lines=[`* PCB pipeline: ${cell.conductors.length} primitive paths, all oriented +x`,'.units m',`.default sigma=${cell.conductivitySm} nhinc=${extraction.filaments} nwinc=${extraction.filaments}`]
-  for(const [i,c] of cell.conductors.entries()) lines.push(`N${i}a x=0 y=${c.yM} z=${c.zM}`,`N${i}b x=${c.lengthM} y=${c.yM} z=${c.zM}`,`E${i} N${i}a N${i}b w=${c.widthM} h=${c.thicknessM} sigma=${c.conductivitySm??cell.conductivitySm} wx=0 wy=1 wz=0`)
+  for(const [i,c] of cell.conductors.entries()) for(const [k,p] of (c.parts??[c]).entries()) {
+    const [a,b]=k?[`N${i}a${k}`,`N${i}b${k}`]:[`N${i}a`,`N${i}b`]
+    lines.push(`${a} x=0 y=${p.yM} z=${p.zM}`,`${b} x=${c.lengthM} y=${p.yM} z=${p.zM}`,`E${i}${k?`p${k}`:''} ${a} ${b} w=${p.widthM} h=${p.thicknessM} sigma=${c.conductivitySm??cell.conductivitySm} wx=0 wy=1 wz=0`)
+    if(k) lines.push(`.equiv N${i}a ${a}`,`.equiv N${i}b ${b}`)
+  }
   for(let i=0;i<cell.conductors.length;i++) lines.push(`.external N${i}a N${i}b`)
   lines.push(`.freq fmin=${extraction.minimumHz} fmax=${extraction.maximumHz} ndec=1`,'.end')
   return lines.join('\n')+'\n'
@@ -216,8 +232,9 @@ export function fasterCapDeck(cell: GeometryCell,extraction: ExtractionSettings)
   const files: Record<string,string>={},list=['* 3D conductor surfaces; metres; homogeneous dielectric']
   for(const c of cell.conductors) {
     const rows=['* closed box conductor surface'],n=Math.ceil(c.lengthM/(extraction.maxPanelLengthMm/1000))
-    const y0=c.yM-c.widthM/2,y1=c.yM+c.widthM/2,z0=c.zM-c.thicknessM/2,z1=c.zM+c.thicknessM/2
     const quad=(vs: [number,number,number][])=>rows.push(`Q ${c.name} ${vs.flat().join(' ')}`)
+    for(const p of c.parts??[c]) {
+    const y0=p.yM-p.widthM/2,y1=p.yM+p.widthM/2,z0=p.zM-p.thicknessM/2,z1=p.zM+p.thicknessM/2
     for(let k=0;k<n;k++) {
       const a=c.lengthM*k/n,b=c.lengthM*(k+1)/n
       quad([[a,y0,z0],[b,y0,z0],[b,y1,z0],[a,y1,z0]])
@@ -227,6 +244,7 @@ export function fasterCapDeck(cell: GeometryCell,extraction: ExtractionSettings)
     }
     quad([[0,y0,z0],[0,y1,z0],[0,y1,z1],[0,y0,z1]])
     quad([[c.lengthM,y0,z1],[c.lengthM,y1,z1],[c.lengthM,y1,z0],[c.lengthM,y0,z0]])
+    }
     files[`${c.name}.txt`]=rows.join('\n')+'\n'
     list.push(`C ${c.name}.txt ${cell.relativePermittivity} 0 0 0`)
   }

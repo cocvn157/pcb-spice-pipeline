@@ -82,7 +82,7 @@ export async function extractChannel(geometry: Geometry, modeling: Modeling, fil
       convergence[kind]=Math.max(...b.flatMap((r,i)=>r.map((v,j)=>Math.abs(v-a[i][j]))))/Math.max(...b.flat().map(Math.abs))
       if(!Number.isFinite(convergence[kind])||convergence[kind]>convergence.tolerance) fail('mesh_convergence',`Stage ${cell.stage} ${kind} refinement residual ${convergence[kind]} > ${convergence.tolerance}; increase filaments and refinementFilaments${cell.routedCopper?' and halve groundMeshMm':''} explicitly`)
     }
-    const analytic=cell.routedCopper?cell.routedCopper.signals.map(p=>p.segments.reduce((sum,s)=>sum+Math.hypot(...s.a.map((v,i)=>v-s.b[i]))*1000/((s.conductivitySm??cell.conductivitySm)*s.widthMm*s.thicknessMm),0)):cell.conductors.map(c=>c.lengthM/((c.conductivitySm??cell.conductivitySm)*c.widthM*c.thicknessM))
+    const analytic=cell.routedCopper?cell.routedCopper.signals.map(p=>p.segments.reduce((sum,s)=>sum+Math.hypot(...s.a.map((v,i)=>v-s.b[i]))*1000/((s.conductivitySm??cell.conductivitySm)*s.widthMm*s.thicknessMm),0)):cell.conductors.map(c=>c.lengthM/((c.conductivitySm??cell.conductivitySm)*(c.parts??[c]).reduce((area,p)=>area+p.widthM*p.thicknessM,0)))
     const errors=analytic.map((v,i)=>Math.abs(lowest.R[i][i]/v-1))
     if(errors.some(e=>!Number.isFinite(e)||e>modeling.extraction.dcResistanceTolerance)) fail('analytic_resistance',`DC geometry check failed: errors ${errors.join(',')}`)
     // A polygon plane has no uniform-bar l/(sigma*w*t) resistance. Keep the
