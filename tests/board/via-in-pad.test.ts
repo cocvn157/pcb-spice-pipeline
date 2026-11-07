@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { geometryFromCircuitJson, parseRecord } from '../../src/board/index.js'
-import { fastHenryDeck, fasterCapDeck } from '../../src/extraction/index.js'
-import { modeling } from '../fixtures/native-channel.js'
-import { viaInPad } from '../fixtures/via-in-pad.js'
+import { geometryFromCircuitJson, parseRecord } from '../../src/board'
+import { fastHenryDeck, fasterCapDeck } from '../../src/extraction'
+import { modeling } from '../fixtures/native-channel'
+import { viaInPad } from '../fixtures/via-in-pad'
 
 test('native via-in-pad references reach the inner ground plane', async () => {
   const circuit = await viaInPad()

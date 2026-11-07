@@ -1,11 +1,11 @@
 // Was src/declarations.ts (circuitNodes, generalDeclarations, modelRunDefinition). Logic and messages unchanged.
-import { transmittedBits } from './stimulus.js'
-import { fail } from './diagnostics.js'
-import { subcircuitTree, selectPort } from '../board/index.js'
-import type { CircuitJson, Geometry } from '../board/index.js'
+import { transmittedBits } from './stimulus'
+import { fail } from './diagnostics'
+import { subcircuitTree, selectPort } from '../board'
+import type { CircuitJson, Geometry } from '../board'
 import type { IbisModelDefinition, IbisRunConfig, IbisReferencePorts } from '@tscircuit/ibis-to-spice'
-import type { ModelRunDefinition } from '../buffers/index.js'
-import type { CircuitNodes, Declarations, PipelineIbisModel, SimulationModeling, SimulationPlan } from './types.js'
+import type { ModelRunDefinition } from '../buffers'
+import type { CircuitNodes, Declarations, PipelineIbisModel, SimulationModeling, SimulationPlan } from './types'
 
 const milliseconds=(value: number | undefined,label: string,{positive=false}={})=>{
   if(typeof value!=='number'||!Number.isFinite(value)||(positive?value<=0:value<0)) fail('simulation_timing',`${label}: finite ${positive?'positive':'nonnegative'} milliseconds required`)

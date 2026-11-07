@@ -1,7 +1,7 @@
 // RLGC pi-section subcircuit text (was spice.ts channelSpice; the legacy simulationSpice has no non-legacy caller and stays behind).
-import { fail } from './diagnostics.js'
-import { validateMatrix } from './checks.js'
-import { scale, sum, type Matrix } from './linalg.js'
+import { fail } from './diagnostics'
+import { validateMatrix } from './checks'
+import { scale, sum, type Matrix } from './linalg'
 
 /** One stage's loop matrices (spice.ts called this `ChannelMatrices`). */
 export interface StageMatrices { R: Matrix; L: Matrix; C: Matrix }

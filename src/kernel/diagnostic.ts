@@ -1,4 +1,4 @@
-import type { DiagnosticCode, DomainName } from '../modules.generated.js'
+import type { DiagnosticCode, DomainName } from '../modules.generated'
 
 /** What the diagnostic is about, so messages (#51, #52) can name records, not just say "failed". */
 export interface DiagnosticSubject {

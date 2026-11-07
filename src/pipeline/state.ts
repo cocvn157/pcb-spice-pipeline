@@ -1,12 +1,12 @@
-import type { Artifact } from '../kernel/index.js'
-import type { SolverContext } from '../solver/index.js'
-import type { Board, ChannelGeometry, CircuitJson } from '../board/index.js'
-import type { ExtractedChannel } from '../extraction/index.js'
-import type { AdmittedBuffers, AssemblyEntry, CompiledBuffer } from '../buffers/index.js'
-import type { Experiments, BoundExperiments, ExperimentRun, SafeSimulationPlan } from '../simulation/index.js'
-import type { ResolvedDdrAssessment } from '../ddr/index.js'
-import type { PipelineModeling } from './modeling.js'
-import type { EyeDescriptor, ExperimentResult, PipelineOptions, PipelineResult } from './result.js'
+import type { Artifact } from '../kernel'
+import type { SolverContext } from '../solver'
+import type { Board, ChannelGeometry, CircuitJson } from '../board'
+import type { ExtractedChannel } from '../extraction'
+import type { AdmittedBuffers, AssemblyEntry, CompiledBuffer } from '../buffers'
+import type { Experiments, BoundExperiments, ExperimentRun, SafeSimulationPlan } from '../simulation'
+import type { ResolvedDdrAssessment } from '../ddr'
+import type { PipelineModeling } from './modeling'
+import type { EyeDescriptor, ExperimentResult, PipelineOptions, PipelineResult } from './result'
 
 /**
  * Pipeline state is a discriminated union; each phase carries everything earlier phases

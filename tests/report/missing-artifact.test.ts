@@ -2,9 +2,9 @@
 // (the pre-module report silently rendered `undefined` for the eye CSV).
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { runPipeline } from '../../src/pipeline/index.js'
-import { generateReport } from '../../src/report/index.js'
-import type { RunSolver } from '../../src/solver/index.js'
+import { runPipeline } from '../../src/pipeline'
+import { generateReport } from '../../src/report'
+import type { RunSolver } from '../../src/solver'
 import { inMemoryInput, fixtureSolver } from '../fixtures/in-memory.mjs'
 
 test('a referenced eye CSV missing from result.files fails report_missing_artifact', async () => {

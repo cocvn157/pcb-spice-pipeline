@@ -1,5 +1,5 @@
 import type { ConvertedGeneralIbisComponent, IbisConversionMetadata, IbisModelDefinition, IbisRunConfig } from '@tscircuit/ibis-to-spice'
-import type { SimulationIbisModel } from '../board/index.js'
+import type { SimulationIbisModel } from '../board'
 
 export type IbisSources = Record<string, Uint8Array | string>
 /** buffers' slice of the public `PipelineModeling`. Validated by admitBuffers: project-relative path -> 64-hex SHA-256. */

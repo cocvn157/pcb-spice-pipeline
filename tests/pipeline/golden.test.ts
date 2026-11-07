@@ -5,11 +5,11 @@
 // (see tests/support/golden.ts). tests/compat/golden.test.ts pins the per-artifact hashes.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import type { RunSolver, SolverRequest, SolverResult } from '../../src/solver/index.js'
-import { runPipeline, type PipelineOptions, type PipelineResult } from '../../src/pipeline/index.js'
-import { sha256 } from '../../src/kernel/index.js'
+import type { RunSolver, SolverRequest, SolverResult } from '../../src/solver'
+import { runPipeline, type PipelineOptions, type PipelineResult } from '../../src/pipeline'
+import { sha256 } from '../../src/kernel'
 import { inMemoryInput, fixtureSolver } from '../fixtures/in-memory.mjs'
-import { goldenDigests, type See } from '../support/golden.js'
+import { goldenDigests, type See } from '../support/golden'
 
 const golden = goldenDigests(new URL('./golden.snapshot.json', import.meta.url))
 type ComposeInput = PipelineOptions & { modeling: NonNullable<PipelineOptions['modeling']> }

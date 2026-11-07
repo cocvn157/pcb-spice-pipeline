@@ -4,10 +4,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { rootScope } from '../../src/kernel/index.js'
-import { type Board, admitBoard, channelGeometry, circuitArtifact, geometryFromCircuitJson, stackupFromCircuitJson, validateCircuitRecords, parseRecord, selectPort, subcircuitTree } from '../../src/board/index.js'
-import { goldenDigests, outcome } from '../support/golden.js'
-import { boardCases } from './fixtures.js'
+import { rootScope } from '../../src/kernel'
+import { type Board, admitBoard, channelGeometry, circuitArtifact, geometryFromCircuitJson, stackupFromCircuitJson, validateCircuitRecords, parseRecord, selectPort, subcircuitTree } from '../../src/board'
+import { goldenDigests, outcome } from '../support/golden'
+import { boardCases } from './fixtures'
 
 const golden = goldenDigests(new URL('./golden.snapshot.json', import.meta.url))
 

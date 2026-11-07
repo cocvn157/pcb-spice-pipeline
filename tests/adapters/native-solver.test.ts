@@ -6,9 +6,9 @@ import assert from 'node:assert/strict'
 import {mkdtemp,mkdir,readdir,readFile,rm,stat,symlink,writeFile} from 'node:fs/promises'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
-import {createNativeSolver,loadIbisSources} from '../../src/adapters/index.js'
-import {invoke} from '../../src/solver/index.js'
-import {rootScope} from '../../src/kernel/index.js'
+import {createNativeSolver,loadIbisSources} from '../../src/adapters'
+import {invoke} from '../../src/solver'
+import {rootScope} from '../../src/kernel'
 
 type T={after:(fn:()=>Promise<void>|void)=>void}
 const sandbox=async(t: T)=>{

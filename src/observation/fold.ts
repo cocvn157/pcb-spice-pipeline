@@ -1,5 +1,5 @@
-import { fail } from './diagnostics.js'
-import type { EyeGate, EyeLimits, EyeSample, FoldOptions, FoldedEye, WaveformRows } from './types.js'
+import { fail } from './diagnostics'
+import type { EyeGate, EyeLimits, EyeSample, FoldOptions, FoldedEye, WaveformRows } from './types'
 
 // Validate counts before allocating folded samples or per-window metadata.
 function eyeWindowBudget(first: number, last: number, pointsPerWindow: number, { maxWindows = 10000, maxSamples = 1000000 }: EyeLimits = {}): number {

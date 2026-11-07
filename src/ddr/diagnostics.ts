@@ -1,4 +1,4 @@
-import { diagnostics, type DiagnosticInit } from '../kernel/index.js'
+import { diagnostics, type DiagnosticInit } from '../kernel'
 
 const raise = diagnostics('ddr', ['ddr_config', 'ddr_probe'] as const)
 export type DdrCode = Parameters<typeof raise>[0]

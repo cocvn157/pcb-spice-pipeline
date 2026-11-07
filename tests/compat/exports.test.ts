@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import * as root from '../../src/index.js'
-import * as node from '../../src/adapters/index.js'
+import * as root from '../../src'
+import * as node from '../../src/adapters'
 
 // Pinned against the flat src/ of 2026-11-07. The switch-over must keep these runtime names exactly.
 // (Type-only exports are pinned by `pnpm typecheck` of the consumer tests, not here.)

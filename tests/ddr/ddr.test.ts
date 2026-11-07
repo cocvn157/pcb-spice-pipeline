@@ -1,10 +1,10 @@
 // Copied from tests/ddr.test.ts. The report assertions of the last test (reportFiles/reportSections) move with report.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { assessDdr, resolveDdrAssessments, type DdrAssessmentConfig, type ResolvedDdrAssessment } from '../../src/ddr/index.js'
-import { foldProbeEye as fold, type EyeGate } from '../../src/observation/index.js'
-import type { SimulationPlan } from '../../src/simulation/index.js'
-import type { Geometry } from '../../src/board/index.js'
+import { assessDdr, resolveDdrAssessments, type DdrAssessmentConfig, type ResolvedDdrAssessment } from '../../src/ddr'
+import { foldProbeEye as fold, type EyeGate } from '../../src/observation'
+import type { SimulationPlan } from '../../src/simulation'
+import type { Geometry } from '../../src/board'
 import { receivedDqsWindows } from '../../scripts/verification/audit-ddr.mjs'
 
 // Old foldProbeEye(rows, {...eye, captureTimesSeconds}, points) in observation's signature.

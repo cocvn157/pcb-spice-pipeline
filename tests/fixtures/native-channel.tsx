@@ -1,6 +1,6 @@
 import { Circuit } from '@tscircuit/core'
 import React from 'react'
-import type { Modeling } from '../../src/pipeline/index.js'
+import type { Modeling } from '../../src/pipeline'
 
 export const modeling: Modeling = {
   reduction: 'routed-copper', sections: 4, relativePermittivity: 4.1,

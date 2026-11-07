@@ -1,8 +1,8 @@
 import { readFile, realpath } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import type { IbisSources } from '../buffers/index.js'
-import type { CircuitJson } from '../board/index.js'
-import { contained, relativeFile } from './paths.js'
+import type { IbisSources } from '../buffers'
+import type { CircuitJson } from '../board'
+import { contained, relativeFile } from './paths'
 
 /** Load declared local files only. Asset URLs do not trigger downloads. Realpath-contained in baseDir. */
 export async function loadIbisSources({ circuitJson, baseDir }: { circuitJson: CircuitJson; baseDir: string }): Promise<IbisSources> {

@@ -3,8 +3,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import type { CircuitJson } from 'circuit-json'
-import { geometryFromCircuitJson, measuredLaneSpacingMm, subcircuitTree, type Modeling } from '../../src/board/index.js'
-import { groundPlaneFixture, routedGroundPlaneFixture } from '../fixtures/ground-plane.js'
+import { geometryFromCircuitJson, measuredLaneSpacingMm, subcircuitTree, type Modeling } from '../../src/board'
+import { groundPlaneFixture, routedGroundPlaneFixture } from '../fixtures/ground-plane'
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/${name}`, import.meta.url), 'utf8'))
 const straight = (): { circuit: CircuitJson; modeling: Modeling } => ({ circuit: read('straight.circuit.json'), modeling: read('straight.modeling.json') })

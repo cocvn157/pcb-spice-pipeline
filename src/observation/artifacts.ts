@@ -1,6 +1,6 @@
-import type { Artifact, ArtifactScope, Produced } from '../kernel/index.js'
-import { foldProbeEye } from './fold.js'
-import type { EyeRequest, EyeResult, EyeSample, WaveformRows } from './types.js'
+import type { Artifact, ArtifactScope, Produced } from '../kernel'
+import { foldProbeEye } from './fold'
+import type { EyeRequest, EyeResult, EyeSample, WaveformRows } from './types'
 
 /** Today's eye-data.csv bytes. */
 export function eyeDataCsv(samples: readonly EyeSample[]): string {

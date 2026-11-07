@@ -1,8 +1,8 @@
 // Moved from tests/native-timeout.test.ts; imports repointed to the new modules. Assertions unchanged.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createNativeSolver } from '../../src/adapters/index.js'
-import { nativeDdrTimeout } from '../fixtures/native-ddr-timeout.js'
+import { createNativeSolver } from '../../src/adapters'
+import { nativeDdrTimeout } from '../fixtures/native-ddr-timeout'
 
 const fixture = nativeDdrTimeout()
 test('native TSX prepares a three-lane DDR extraction and two eye declarations', async () => {

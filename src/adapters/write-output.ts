@@ -1,8 +1,8 @@
 import { mkdir, realpath, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
-import type { PipelineResult } from '../pipeline/index.js'
-import { generateReport } from '../report/index.js'
-import { contained, relativeFile } from './paths.js'
+import type { PipelineResult } from '../pipeline'
+import { generateReport } from '../report'
+import { contained, relativeFile } from './paths'
 
 /** Write the supplied result and a report at the caller's explicit request. */
 export async function writePipelineOutput({ result, outputDir }: { result: PipelineResult; outputDir: string }): Promise<void> {

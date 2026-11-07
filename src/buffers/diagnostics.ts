@@ -1,4 +1,4 @@
-import { diagnostics, type DiagnosticInit } from '../kernel/index.js'
+import { diagnostics, type DiagnosticInit } from '../kernel'
 
 /** Codes today's model-source.ts and the IBIS part of general-pipeline.ts raise. */
 const raise = diagnostics('buffers', ['converter_version', 'vendor_hash', 'ibis_asset', 'ibis_asset_missing', 'file_path'] as const)

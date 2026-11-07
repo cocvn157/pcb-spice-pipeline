@@ -1,5 +1,5 @@
 // Was src/stimulus.ts.
-import { fail, type SimulationCode } from './diagnostics.js'
+import { fail, type SimulationCode } from './diagnostics'
 
 /** Public. Normalizes a transmission pattern to a '0'/'1' string (<= 65536 bits). */
 export function transmittedBits(value: unknown, code: SimulationCode = 'stimulus_pattern'): string {

@@ -1,8 +1,8 @@
 // modelingFromCircuitJson (was src/modeling.ts): pcb_spice_channel -> PipelineModeling, and its failures.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { modelingFromCircuitJson, runPipeline } from '../../src/pipeline/index.js'
-import type { CircuitJson } from '../../src/board/index.js'
+import { modelingFromCircuitJson, runPipeline } from '../../src/pipeline'
+import type { CircuitJson } from '../../src/board'
 import { inMemoryInput } from '../fixtures/in-memory.mjs'
 
 const channel = {

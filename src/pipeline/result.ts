@@ -1,12 +1,12 @@
-import type { FileMap } from '../kernel/index.js'
-import type { CircuitJson, ChannelGeometry } from '../board/index.js'
-import type { ChannelMatrices } from '../extraction/index.js'
-import type { RunSolver } from '../solver/index.js'
-import type { IbisSources, AssemblyEntry } from '../buffers/index.js'
-import type { SimulationPlan, VoltageProbePlan } from '../simulation/index.js'
-import type { EyeResult } from '../observation/index.js'
-import type { DdrAssessment } from '../ddr/index.js'
-import type { PipelineModeling } from './modeling.js'
+import type { FileMap } from '../kernel'
+import type { CircuitJson, ChannelGeometry } from '../board'
+import type { ChannelMatrices } from '../extraction'
+import type { RunSolver } from '../solver'
+import type { IbisSources, AssemblyEntry } from '../buffers'
+import type { SimulationPlan, VoltageProbePlan } from '../simulation'
+import type { EyeResult } from '../observation'
+import type { DdrAssessment } from '../ddr'
+import type { PipelineModeling } from './modeling'
 
 export interface PipelineOptions {
   circuitJson: CircuitJson

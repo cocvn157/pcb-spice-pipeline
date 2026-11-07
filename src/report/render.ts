@@ -1,9 +1,9 @@
 // Was src/viewer.ts. Bytes unchanged.
-import type {FileMap} from '../kernel/index.js'
-import type {PipelineResult} from '../pipeline/index.js'
-import {browserClient} from './client/viewer-client.generated.js'
-import {html as escapeHtml,reportContext,reportFiles,reportSections,type ReportData} from './sections.js'
-import {fail} from './diagnostics.js'
+import type {FileMap} from '../kernel'
+import type {PipelineResult} from '../pipeline'
+import {browserClient} from './client/viewer-client.generated'
+import {html as escapeHtml,reportContext,reportFiles,reportSections,type ReportData} from './sections'
+import {fail} from './diagnostics'
 
 /** An artifact the result itself names; 'report_missing_artifact' instead of rendering `undefined`. */
 function namedArtifact(result: PipelineResult, path: string): string {

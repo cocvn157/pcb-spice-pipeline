@@ -22,5 +22,6 @@ This is the only agent rules file. Do not add CLAUDE.md, GEMINI.md, .cursorrules
 ## Code
 
 - `pnpm check:modules && pnpm typecheck && pnpm test` must pass before a PR is ready.
+- Relative imports have no extension: `from './stages'`, and `from '../board'` for another module (enforced by `tests/tooling/imports.test.ts`). The build adds `.js` back in `dist/`.
 - Module rules, verification and migration notes: `docs/ARCHITECTURE.md`.
 - Output must stay byte-identical unless the PR says otherwise: `tests/compat/` pins exports, error codes, artifact paths and hashes.

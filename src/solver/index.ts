@@ -5,7 +5,7 @@
  * Does NOT own: interpreting solver output (extraction, simulation do that).
  * Imports: kernel.
  */
-import { diagnostics, type ArtifactScope, type Produced } from '../kernel/index.js'
+import { diagnostics, type ArtifactScope, type Produced } from '../kernel'
 
 export type Solver = 'fasthenry' | 'fastercap' | 'ngspice'
 export interface SolverRequest {

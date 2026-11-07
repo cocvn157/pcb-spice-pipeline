@@ -5,10 +5,10 @@ import { readFileSync } from 'node:fs'
 import { createElement as h } from 'react'
 import { Circuit, analog } from '@tscircuit/core'
 import type { IbisModelDefinition } from '@tscircuit/props'
-import { ImportedBoard } from './tsx.js'
-import { serializeSimulation } from './tsx.js'
-import { parseRecord } from '../../src/board/index.js'
-import { validateCircuitRecords } from '../../src/board/index.js'
+import { ImportedBoard } from './tsx'
+import { serializeSimulation } from './tsx'
+import { parseRecord } from '../../src/board'
+import { validateCircuitRecords } from '../../src/board'
 
 const model: IbisModelDefinition = {
   ibisModelAsset: { project_relative_path: 'models/driver.ibs', url: 'https://example.com/driver.ibs', mimetype: 'text/plain' },

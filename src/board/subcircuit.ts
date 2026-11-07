@@ -1,4 +1,4 @@
-import { fail } from './diagnostics.js'
+import { fail } from './diagnostics'
 
 interface ScopeRecord { type: string; [key: string]: unknown }
 

@@ -1,6 +1,6 @@
 // Canned native answers for extraction tests (not a substitute solver: they echo the geometry's own analytic R).
-import type { RunSolver, SolverRequest } from '../../src/solver/index.js'
-import type { Geometry, GeometryCell, Modeling } from '../../src/board/index.js'
+import type { RunSolver, SolverRequest } from '../../src/solver'
+import type { Geometry, GeometryCell, Modeling } from '../../src/board'
 
 /** Perturbations: R scale per run (0 coarse, 1 refined), DC mutual R, omit port rows, coarse frequencies. */
 export interface Tweak { rScale?: [number, number]; lowMutualR?: number; noRows?: boolean; coarseHz?: number[] }

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { invoke, type SolverResult, type SolverRequest } from '../../src/solver/index.js'
-import { rootScope } from '../../src/kernel/index.js'
+import { invoke, type SolverResult, type SolverRequest } from '../../src/solver'
+import { rootScope } from '../../src/kernel'
 
 const ctx = (result: SolverResult | unknown) => ({ runSolver: async () => result as SolverResult, progress: () => {} })
 const request = { solver: 'ngspice' as const, files: { 'simulation.cir': 'deck' }, args: ['-b'], outputFiles: ['waveform.dat'] }

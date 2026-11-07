@@ -1,10 +1,10 @@
 // Every code in src/ddr/diagnostics.ts (module rule M3), with today's messages.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { Diagnostic } from '../../src/kernel/index.js'
-import { resolveDdrAssessments, validateDdrConfig, type DdrAssessmentConfig } from '../../src/ddr/index.js'
-import type { SimulationPlan } from '../../src/simulation/index.js'
-import type { Geometry } from '../../src/board/index.js'
+import { Diagnostic } from '../../src/kernel'
+import { resolveDdrAssessments, validateDdrConfig, type DdrAssessmentConfig } from '../../src/ddr'
+import type { SimulationPlan } from '../../src/simulation'
+import type { Geometry } from '../../src/board'
 
 const config = { name: 'c', dataProbe: 'DQ', strobeProbe: 'DQS', direction: 'write', sampleOffsetSeconds: 0, vrefV: .75,
   thresholds: { vilAcV: .55, vilDcV: .65, vihDcV: .85, vihAcV: .95 }, setupSeconds: 0, holdSeconds: 0,

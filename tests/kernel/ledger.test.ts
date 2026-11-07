@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { ArtifactLedger, Diagnostic, diagnostics, rootScope, safeId, sha256 } from '../../src/kernel/index.js'
+import { ArtifactLedger, Diagnostic, diagnostics, rootScope, safeId, sha256 } from '../../src/kernel'
 
 test('ledger seals sorted keys with jsonFile byte format', () => {
   const root = rootScope('pipeline')

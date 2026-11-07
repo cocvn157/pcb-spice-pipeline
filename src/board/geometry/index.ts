@@ -1,13 +1,13 @@
 // Lane resolution + both reductions -> today's Geometry (was geometry.ts minus decks).
-import type { ArtifactScope, Produced } from '../../kernel/index.js'
-import type { CircuitJson } from '../schema.js'
-import type { Board } from '../model.js'
-import { fail } from '../diagnostics.js'
-import { stackupFromCircuitJson, defaultCopperConductivitySm } from '../stackup.js'
-import { selectPort, resolveRouteVias } from './ports.js'
-import { routedCopperGeometry } from './routed.js'
-import { groundPourLayers, measuredLaneSpacingMm, stackupStageReturn } from './returns.js'
-import type { BoardModeling as Modeling, Geometry, GeometryCell, LaneMapping, ResolvedModeling, RouteStage, RoutedPoint } from './types.js'
+import type { ArtifactScope, Produced } from '../../kernel'
+import type { CircuitJson } from '../schema'
+import type { Board } from '../model'
+import { fail } from '../diagnostics'
+import { stackupFromCircuitJson, defaultCopperConductivitySm } from '../stackup'
+import { selectPort, resolveRouteVias } from './ports'
+import { routedCopperGeometry } from './routed'
+import { groundPourLayers, measuredLaneSpacingMm, stackupStageReturn } from './returns'
+import type { BoardModeling as Modeling, Geometry, GeometryCell, LaneMapping, ResolvedModeling, RouteStage, RoutedPoint } from './types'
 
 const positive=(v: unknown,label: string): number=>{if(typeof v!=='number'||!Number.isFinite(v)||v<=0) fail('modeling_input',`${label} must be a positive number`);return v}
 const finite=(v: unknown,label: string): number=>{if(typeof v!=='number'||!Number.isFinite(v)) fail('modeling_input',`${label} must be explicit and finite`);return v}

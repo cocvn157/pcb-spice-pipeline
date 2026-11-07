@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
-import { runPipeline, type RunSolver } from '../../src/index.js'
+import { runPipeline, type RunSolver } from '../../src'
 import { inMemoryInput, fixtureSolver } from '../fixtures/in-memory.mjs'
 
 // Golden bytes for runPipeline on the repo's canned-solver fixtures (tests/fixtures/in-memory.mjs +

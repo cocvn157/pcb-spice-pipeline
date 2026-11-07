@@ -3,9 +3,9 @@ import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import type { RunSolver, Solver } from '../solver/index.js'
-import { fail } from './diagnostics.js'
-import { contained, relativeFile } from './paths.js'
+import type { RunSolver, Solver } from '../solver'
+import { fail } from './diagnostics'
+import { contained, relativeFile } from './paths'
 
 export interface NativeSolverOptions { tools?: Partial<Record<Solver, string>>; timeoutMs?: number }
 const exec = promisify(execFile)

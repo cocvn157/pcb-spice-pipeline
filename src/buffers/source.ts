@@ -1,7 +1,7 @@
 // Was src/model-source.ts. Messages and codes are byte-identical.
-import { sha256 } from '../kernel/index.js'
-import { fail } from './diagnostics.js'
-import type { IbisSources, LoadedModelSource, ModelSourceRequest } from './types.js'
+import { sha256 } from '../kernel'
+import { fail } from './diagnostics'
+import type { IbisSources, LoadedModelSource, ModelSourceRequest } from './types'
 
 /** Portable relative paths used by the explicit Node adapter as well as file maps. */
 export function relativeFile(path: string): string {

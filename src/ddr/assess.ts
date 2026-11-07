@@ -1,9 +1,9 @@
 // Was src/ddr.ts. Behaviour, messages and the status rule are unchanged. Open question (ARCHITECTURE.md):
 // a strobe-gate failure makes the overall status 'not-evaluated' rather than 'violated'; kept as today.
-import { fail } from './diagnostics.js'
-import type { Geometry } from '../board/index.js'
-import type { SimulationPlan } from '../simulation/index.js'
-import type { DdrAssessment, DdrAssessmentConfig, DdrCapture, ResolvedDdrAssessment } from './types.js'
+import { fail } from './diagnostics'
+import type { Geometry } from '../board'
+import type { SimulationPlan } from '../simulation'
+import type { DdrAssessment, DdrAssessmentConfig, DdrCapture, ResolvedDdrAssessment } from './types'
 
 export function validateDdrConfig(c: DdrAssessmentConfig): void {
   if (!c || typeof c !== 'object') fail('ddr_config', 'Explicit DDR assessment configuration required')

@@ -7,4 +7,4 @@
  * (results.html, csv/*.csv).
  * Imports: kernel, board (port labels), simulation/ddr (types), pipeline (PipelineResult type).
  */
-export { generateReport } from './render.js'
+export { generateReport } from './render'

@@ -1,4 +1,4 @@
-import { diagnostics, type DiagnosticInit } from '../kernel/index.js'
+import { diagnostics, type DiagnosticInit } from '../kernel'
 
 const raise = diagnostics('board', [
   'circuit_json', 'circuit_schema', 'modeling_input', 'reduction', 'lanes', 'pin_mapping', 'extraction', 'sections',

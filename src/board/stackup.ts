@@ -1,5 +1,5 @@
 import { pcb_stackup, type CircuitJson } from 'circuit-json'
-import { fail } from './diagnostics.js'
+import { fail } from './diagnostics'
 
 export const defaultCopperConductivitySm = 5.8e7
 export interface CopperLayer {

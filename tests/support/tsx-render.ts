@@ -1,9 +1,9 @@
 import type { RootCircuit, NormalComponent, Port } from '@tscircuit/core'
-import { importedBoardRecords, importedBoardDeclarations } from './tsx.js'
-import type { ImportedBoardInstance, SavedRecord } from './tsx.js'
-import type { CircuitJson } from '../../src/board/index.js'
+import { importedBoardRecords, importedBoardDeclarations } from './tsx'
+import type { ImportedBoardInstance, SavedRecord } from './tsx'
+import type { CircuitJson } from '../../src/board'
 import { fail } from './fail.mjs'
-import { subcircuitTree } from '../../src/board/index.js'
+import { subcircuitTree } from '../../src/board'
 
 export function serializeSimulation(circuit: RootCircuit): CircuitJson {
   const nativeRecords = circuit.getCircuitJson()

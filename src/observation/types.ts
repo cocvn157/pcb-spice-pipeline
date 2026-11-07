@@ -1,4 +1,4 @@
-import type { SafeId } from '../kernel/index.js'
+import type { SafeId } from '../kernel'
 /** Strictly increasing finite times (s), equal-length finite volts (V). */
 export interface Signal { readonly t: Float64Array; readonly v: Float64Array }
 /**

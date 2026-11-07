@@ -1,8 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises'
-import { nativeChannel, modeling, curvedPoints } from '../tests/fixtures/native-channel.js'
-import { geometryFromCircuitJson } from '../src/board/index.js'
-import { fasterCapDeck } from '../src/extraction/index.js'
-import { circuitNodes } from '../src/simulation/index.js'
+import { nativeChannel, modeling, curvedPoints } from '../tests/fixtures/native-channel'
+import { geometryFromCircuitJson } from '../src/board'
+import { fasterCapDeck } from '../src/extraction'
+import { circuitNodes } from '../src/simulation'
 
 const directory = new URL('../tests/reproductions/native-channel/', import.meta.url)
 const cases = [

@@ -6,5 +6,5 @@
  * that observation folds on. Writes no artifacts (assessments are embedded in eye-data.json).
  * Imports: kernel, board (types), simulation (plan/probe types). (Was: ddr.ts.)
  */
-export type { DdrModeling, DdrAssessmentConfig, ResolvedDdrAssessment, DdrAssessment, DdrCapture, CheckStatus } from './types.js'
-export { validateDdrConfig, resolveDdrAssessments, assessDdr } from './assess.js'
+export type { DdrModeling, DdrAssessmentConfig, ResolvedDdrAssessment, DdrAssessment, DdrCapture, CheckStatus } from './types'
+export { validateDdrConfig, resolveDdrAssessments, assessDdr } from './assess'

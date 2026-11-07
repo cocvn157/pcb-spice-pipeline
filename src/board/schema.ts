@@ -2,7 +2,7 @@
 import { z } from 'zod'
 import * as base from 'circuit-json'
 import type { CircuitJson } from 'circuit-json'
-import { fail } from './diagnostics.js'
+import { fail } from './diagnostics'
 
 export type {
   CircuitJson,

@@ -1,12 +1,12 @@
 // Routed-copper geometry: connectivity, pour polygons, signal and reference-lead paths, in mm (was copper.ts minus meshing/decks).
-import type { CircuitJson } from '../schema.js'
-import { fail } from '../diagnostics.js'
-import { connectedSourceIds } from '../connectivity.js'
-import { subcircuitTree } from '../subcircuit.js'
-import { selectPort, resolveRouteVias } from './ports.js'
-import { ringArea as area, polygonContains as contains } from './polygon.js'
+import type { CircuitJson } from '../schema'
+import { fail } from '../diagnostics'
+import { connectedSourceIds } from '../connectivity'
+import { subcircuitTree } from '../subcircuit'
+import { selectPort, resolveRouteVias } from './ports'
+import { ringArea as area, polygonContains as contains } from './polygon'
 import type { CopperPoint as Point, CopperXYZ as XYZ, CopperPolygon as Polygon, CopperSegment as Segment, CopperPath as Path,
-  Geometry, LaneMapping, ResolvedModeling, RoutedCopper } from './types.js'
+  Geometry, LaneMapping, ResolvedModeling, RoutedCopper } from './types'
 
 const finite = (value: number) => Number.isFinite(value)
 const distance = (a: XYZ, b: XYZ) => Math.hypot(...a.map((v, i) => v - b[i]))

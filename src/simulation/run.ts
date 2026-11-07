@@ -1,13 +1,13 @@
 // The per-experiment ngspice part of general-pipeline.ts runPipeline, plus the plan-level checks
 // it performed around declarations. Messages, artifact paths and bytes unchanged.
-import { safeId, sha256, type Artifact, type ArtifactScope, type Produced } from '../kernel/index.js'
-import { invoke, type SolverContext } from '../solver/index.js'
-import { parseRecord, type CircuitJson, type Geometry } from '../board/index.js'
-import { probeWaveformRows } from '../observation/index.js'
-import type { StageMatrices } from '../extraction/index.js'
-import { fail } from './diagnostics.js'
-import { generalSimulationSpice, validateProbeScope } from './netlist.js'
-import type { BoundExperiments, CircuitNodes, ElectricalSources, ExperimentModel, ExperimentResult, ExperimentRun, Experiments, SafeSimulationPlan, SimulationPlan } from './types.js'
+import { safeId, sha256, type Artifact, type ArtifactScope, type Produced } from '../kernel'
+import { invoke, type SolverContext } from '../solver'
+import { parseRecord, type CircuitJson, type Geometry } from '../board'
+import { probeWaveformRows } from '../observation'
+import type { StageMatrices } from '../extraction'
+import { fail } from './diagnostics'
+import { generalSimulationSpice, validateProbeScope } from './netlist'
+import type { BoundExperiments, CircuitNodes, ElectricalSources, ExperimentModel, ExperimentResult, ExperimentRun, Experiments, SafeSimulationPlan, SimulationPlan } from './types'
 
 /**
  * Today's runPipeline safeId loop over experiment and eye ids (fails kernel 'simulation_id').

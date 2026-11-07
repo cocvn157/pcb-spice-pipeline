@@ -5,6 +5,6 @@
  * Imports: kernel, solver (types), buffers (IbisSources), board (CircuitJson), pipeline (types), report.
  * Package export "./node" points straight here — no src/node.ts pass-through.
  */
-export { createNativeSolver, type NativeSolverOptions } from './native-solver.js'
-export { loadIbisSources } from './ibis-fs.js'
-export { writePipelineOutput } from './write-output.js'
+export { createNativeSolver, type NativeSolverOptions } from './native-solver'
+export { loadIbisSources } from './ibis-fs'
+export { writePipelineOutput } from './write-output'

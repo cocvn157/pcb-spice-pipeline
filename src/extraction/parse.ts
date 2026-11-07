@@ -1,8 +1,8 @@
 // Native output parsers and log scans (was matrices.mjs parseFastHenry/parseFasterCap + extraction.ts checkNativeRun).
-import type { DiagnosticInit } from '../kernel/index.js'
-import type { GeometryCell } from '../board/index.js'
-import { fail } from './diagnostics.js'
-import type { Matrix } from './linalg.js'
+import type { DiagnosticInit } from '../kernel'
+import type { GeometryCell } from '../board'
+import { fail } from './diagnostics'
+import type { Matrix } from './linalg'
 
 export interface ImpedanceSample { frequencyHz: number; R: Matrix; L: Matrix }
 export interface CapacitanceOutput { names: string[]; matrix: Matrix; units: string }

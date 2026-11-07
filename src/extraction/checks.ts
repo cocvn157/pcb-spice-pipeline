@@ -1,6 +1,6 @@
 // Reciprocity / passivity / reference reduction (was matrices.mjs validateMatrix/loopImpedance/referenceCapacitance).
-import { fail } from './diagnostics.js'
-import { multiply, sum, symmetrize, transpose, type Matrix } from './linalg.js'
+import { fail } from './diagnostics'
+import { multiply, sum, symmetrize, transpose, type Matrix } from './linalg'
 
 export interface MatrixCheck { matrix: Matrix; reciprocityResidual: number; cholesky: Matrix }
 export interface CapacitanceCheck extends MatrixCheck { denominator: number; convention: string }

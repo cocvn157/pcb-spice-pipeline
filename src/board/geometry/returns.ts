@@ -1,7 +1,7 @@
-import type { CircuitJson } from '../schema.js'
-import type { BoardStackup } from '../stackup.js'
-import { connectedSourceIds } from '../connectivity.js'
-import { fail } from '../diagnostics.js'
+import type { CircuitJson } from '../schema'
+import type { BoardStackup } from '../stackup'
+import { connectedSourceIds } from '../connectivity'
+import { fail } from '../diagnostics'
 /** Width of each derived return bar. The return current of a stage stays
  * within a few dielectric heights of the signal, so a 2 mm strip of each
  * adjacent plane carries it; widening it only adds solver panels. */

@@ -1,5 +1,5 @@
-import type { DomainName } from '../modules.generated.js'
-import { fail } from './fail.js'
+import type { DomainName } from '../modules.generated'
+import { fail } from './fail'
 
 /** Output wire format: path -> UTF-8 body. Only ArtifactLedger.seal() creates one. */
 export type FileMap = Record<string, string>

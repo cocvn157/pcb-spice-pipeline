@@ -3,7 +3,7 @@
 // so "complete" is decided by exact comparison, independent of the fold's epsilon tolerance.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { foldProbeEye, type EyeGate } from '../../src/observation/index.js'
+import { foldProbeEye, type EyeGate } from '../../src/observation'
 
 const grid = (r: Rng, lo: number, hi: number) => r.int(lo * 16, hi * 16) / 16
 function recording(r: Rng): number[][] {

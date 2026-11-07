@@ -4,9 +4,9 @@
 // flat src/ while it still existed (see tests/support/golden.ts).
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { foldProbeEye, probeWaveformRows, foldEyes, type EyeAlignment, type EyeFoldInput, type EyeRequest } from '../../src/observation/index.js'
-import { rootScope } from '../../src/kernel/index.js'
-import { goldenDigests } from '../support/golden.js'
+import { foldProbeEye, probeWaveformRows, foldEyes, type EyeAlignment, type EyeFoldInput, type EyeRequest } from '../../src/observation'
+import { rootScope } from '../../src/kernel'
+import { goldenDigests } from '../support/golden'
 
 const golden = goldenDigests(new URL('./golden.snapshot.json', import.meta.url))
 

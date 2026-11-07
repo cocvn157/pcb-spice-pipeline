@@ -1,16 +1,16 @@
-import { rootScope, type Artifact } from '../kernel/index.js'
-import { admitBoard, channelGeometry, circuitArtifact } from '../board/index.js'
-import { extractChannel } from '../extraction/index.js'
-import { assertConverter, admitBuffers, compileBuffers, ibisAssembly } from '../buffers/index.js'
+import { rootScope, type Artifact } from '../kernel'
+import { admitBoard, channelGeometry, circuitArtifact } from '../board'
+import { extractChannel } from '../extraction'
+import { assertConverter, admitBuffers, compileBuffers, ibisAssembly } from '../buffers'
 import {
   generalDeclarations, electricalSources, safeSimulationPlans, modelRunDefinition, bindExperiments, electricalNodeMap,
   runExperiment, simulationResultCircuitJson, experimentResult,
-} from '../simulation/index.js'
-import { foldEyes, type EyeFoldInput } from '../observation/index.js'
-import { resolveDdrAssessments, assessDdr } from '../ddr/index.js'
-import { modelingFromCircuitJson } from './modeling.js'
-import type { EyeDescriptor } from './result.js'
-import type { Chain, ObservedRun, Stage } from './state.js'
+} from '../simulation'
+import { foldEyes, type EyeFoldInput } from '../observation'
+import { resolveDdrAssessments, assessDdr } from '../ddr'
+import { modelingFromCircuitJson } from './modeling'
+import type { EyeDescriptor } from './result'
+import type { Chain, ObservedRun, Stage } from './state'
 
 /**
  * The one list of stages. Order here IS execution order, and it is today's runPipeline order

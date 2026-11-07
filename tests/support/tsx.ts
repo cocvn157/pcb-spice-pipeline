@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import type { BoardProps } from '@tscircuit/props'
 
 // Internal to this package's tests; intentionally absent from package exports.
-export { serializeSimulation } from './tsx-render.js'
+export { serializeSimulation } from './tsx-render'
 export type { IbisModelDefinition } from '@tscircuit/props'
 export interface SavedRecord { type: string; [key: string]: unknown }
 export const importedBoardRecords = Symbol.for('signal-integrity-pipeline.imported-board.v2')

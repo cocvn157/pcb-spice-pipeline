@@ -5,17 +5,17 @@ import {runInNewContext} from 'node:vm'
 import {mkdtemp,readFile,rm,mkdir,writeFile} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {join,dirname} from 'node:path'
-import {generateReportData} from '../../src/report/render.js'
+import {generateReportData} from '../../src/report/render'
 async function writeViewerData(path:string,data:ReportData,title?:string) {
   for(const [file,body] of Object.entries(generateReportData(data,title))) {
     const target=join(dirname(path),file);await mkdir(dirname(target),{recursive:true});await writeFile(target,body)
   }
 }
-import type {ReportData} from '../../src/report/sections.js'
-import {reportContext} from '../../src/report/sections.js'
-import {geometryFromCircuitJson} from '../../src/board/index.js'
-import type {Modeling} from '../../src/pipeline/index.js'
-import type {CircuitJson} from '../../src/board/index.js'
+import type {ReportData} from '../../src/report/sections'
+import {reportContext} from '../../src/report/sections'
+import {geometryFromCircuitJson} from '../../src/board'
+import type {Modeling} from '../../src/pipeline'
+import type {CircuitJson} from '../../src/board'
 
 test('portable results retain raw adaptive samples and escape embedded names',async t=>{
   const directory=await mkdtemp(join(tmpdir(),'pcb-viewer-'));t.after(()=>rm(directory,{recursive:true,force:true}))

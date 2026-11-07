@@ -1,4 +1,4 @@
-import { fail } from './diagnostics.js'
+import { fail } from './diagnostics'
 
 // General measurements consume recorded probe values, never an assumed bit pattern.
 /** Parse ngspice wrdata text (header line, then time + one column per probe). Was metrics.mjs probeWaveformRows. */

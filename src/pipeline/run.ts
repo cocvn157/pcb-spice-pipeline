@@ -1,8 +1,8 @@
-import { ArtifactLedger, type FileMap } from '../kernel/index.js'
-import type { SolverContext } from '../solver/index.js'
-import type { PipelineOptions, PipelineResult } from './result.js'
-import { PRE_VALIDATION, type AnyStage, type Phase, type PipelineState, type PureContext, type StateAt } from './state.js'
-import { STAGES } from './stages.js'
+import { ArtifactLedger, type FileMap } from '../kernel'
+import type { SolverContext } from '../solver'
+import type { PipelineOptions, PipelineResult } from './result'
+import { PRE_VALIDATION, type AnyStage, type Phase, type PipelineState, type PureContext, type StateAt } from './state'
+import { STAGES } from './stages'
 
 /** Adds the sealed ledger to the sealed state's result. A plain function, not a stage. */
 function sealResult(state: StateAt<'sealed'>, files: FileMap): PipelineResult {

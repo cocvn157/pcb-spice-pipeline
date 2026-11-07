@@ -2,21 +2,21 @@ import { mkdir, readFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import type { IbisConversionMetadata, IbisModelDefinition } from '@tscircuit/ibis-to-spice'
 import { json, sha256 } from './io.mjs'
-import { transmittedBits } from '../../../src/simulation/index.js'
+import { transmittedBits } from '../../../src/simulation'
 import { fail } from '../fail.mjs'
-import { generateReportData } from '../../../src/report/render.js'
-import type {ReportData} from '../../../src/report/sections.js'
+import { generateReportData } from '../../../src/report/render'
+import type {ReportData} from '../../../src/report/sections'
 import {writeFile} from 'node:fs/promises'
 async function writeViewerData(path: string,data: ReportData,title?:string) {
   for(const [file,body] of Object.entries(generateReportData(data,title))) {
     const target=join(dirname(path),file);await mkdir(dirname(target),{recursive:true});await writeFile(target,body)
   }
 }
-import { simulationSpiceOptions } from '../../../src/simulation/index.js'
-import { reportContext, type ReportContext, type ReportRun, type ReportEye, type ReportTest } from '../../../src/report/sections.js'
-import type { CircuitJson } from '../../../src/board/index.js'
-import type { Geometry as ChannelGeometry } from '../../../src/board/index.js'
-import type { Modeling } from '../../../src/pipeline/index.js'
+import { simulationSpiceOptions } from '../../../src/simulation'
+import { reportContext, type ReportContext, type ReportRun, type ReportEye, type ReportTest } from '../../../src/report/sections'
+import type { CircuitJson } from '../../../src/board'
+import type { Geometry as ChannelGeometry } from '../../../src/board'
+import type { Modeling } from '../../../src/pipeline'
 
 interface Stimulus {
   source_port_id: string

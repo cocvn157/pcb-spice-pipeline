@@ -1,4 +1,4 @@
-import { diagnostics, type DiagnosticInit } from '../kernel/index.js'
+import { diagnostics, type DiagnosticInit } from '../kernel'
 
 /** Codes raised by today's src/node.ts (file_path via relativeFile/contained). */
 const raise = diagnostics('adapters', ['file_path', 'native_solver', 'native_timeout'] as const)

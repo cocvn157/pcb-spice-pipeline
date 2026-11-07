@@ -13,10 +13,10 @@
  *   EX  tools/exemptions.json may waive M1-M3 for a module with an ISO expiry date; expired => fail (migration)
  * and for src/ as a whole:
  *   S1  no directory under src/ without index.ts (no unowned code); src/*.ts only index.ts + modules.generated.ts
- *   S2  a cross-module import must target `../<other>/index.js` (internals unreachable)
+ *   S2  a cross-module import must target the module folder `../<other>` (internals unreachable)
  *   S3  the module import graph is acyclic (derived from imports; there is no declared layer list)
  *   S4  `node:*` and fs/child_process imports appear only in src/adapters/**
- *   S5  src/index.ts imports only `./<module>/index.js` and ./modules.generated.js
+ *   S5  src/index.ts imports only `./<module>` and ./modules.generated
  *   S6  src/modules.generated.ts equals the generated DomainName + DiagnosticCode unions (--write regenerates)
  *
  * Migration (tools/exemptions.json, see ARCHITECTURE.md "Staged migration"):
@@ -177,8 +177,13 @@ function importsOf(file: string): ImportEdge[] {
   const info = ts.preProcessFile(readFileSync(file, 'utf8'), true, true)
   return info.importedFiles.map(({ fileName }) => ({
     file, specifier: fileName,
-    target: fileName.startsWith('.') ? resolve(dirname(file), fileName) : undefined,
+    target: fileName.startsWith('.') ? resolveTarget(resolve(dirname(file), fileName)) : undefined,
   }))
+}
+
+/** Imports are extensionless; a directory import (`../board`) means its index file. */
+function resolveTarget(abs: string): string {
+  return existsSync(abs) && statSync(abs).isDirectory() ? join(abs, 'index') : abs
 }
 const NODE_BUILTIN = /^(?:node:|(?:fs|child_process)(?:\/|$))/
 
@@ -221,7 +226,7 @@ export function checkSource(src: string, modules: ModuleInfo[], options: CheckOp
       }
       graph.get(owner)!.add(targetModule)
       if (stem(edge.target) !== stem(resolve(src, targetModule, 'index.ts')))
-        out.push({ rule: 'S2', module: owner, message: `${path} imports '${edge.specifier}'; cross-module imports must target ../${targetModule}/index.js` })
+        out.push({ rule: 'S2', module: owner, message: `${path} imports '${edge.specifier}'; cross-module imports must target ../${targetModule}` })
     }
   }
 
@@ -254,8 +259,9 @@ export function checkSource(src: string, modules: ModuleInfo[], options: CheckOp
       [...names].some(n => stem(edge.target!) === stem(resolve(src, n, 'index.ts'))) ||
       stem(edge.target) === stem(resolve(src, 'modules.generated.ts')) ||
       isLegacy(toPosix(relative(repo, edge.target)).replace(/\.js$/, '.ts'), legacy) ||
+      isLegacy(toPosix(relative(repo, edge.target)) + '.ts', legacy) ||
       isLegacy(toPosix(relative(repo, edge.target)), legacy))
-    if (!ok) out.push({ rule: 'S5', module: 'src', message: `${rel(entry)} imports '${edge.specifier}'; only ./<module>/index.js and ./modules.generated.js are allowed` })
+    if (!ok) out.push({ rule: 'S5', module: 'src', message: `${rel(entry)} imports '${edge.specifier}'; only ./<module> and ./modules.generated are allowed` })
   }
 
   // S6: generated unions are current.

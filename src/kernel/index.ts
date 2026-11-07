@@ -4,8 +4,8 @@
  * hashing. No domain knowledge.
  * Imports: nothing in src/ except ../modules.generated (types only).
  */
-export { Diagnostic, diagnostics, type DiagnosticSubject, type DiagnosticInit } from './diagnostic.js'
-export { type Artifact, type ArtifactPath, type ArtifactScope, type FileMap, type Produced, ArtifactLedger, rootScope, artifactPath, jsonBody } from './artifacts.js'
-export { type SafeId, safeId } from './ids.js'
-export { sha256 } from './hash.js'
+export { Diagnostic, diagnostics, type DiagnosticSubject, type DiagnosticInit } from './diagnostic'
+export { type Artifact, type ArtifactPath, type ArtifactScope, type FileMap, type Produced, ArtifactLedger, rootScope, artifactPath, jsonBody } from './artifacts'
+export { type SafeId, safeId } from './ids'
+export { sha256 } from './hash'
 

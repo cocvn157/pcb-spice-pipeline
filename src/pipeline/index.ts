@@ -8,7 +8,7 @@
  * Artifacts: inputs/modeling.json, circuit-results.json.
  * Imports: every domain except report and adapters.
  */
-export type { PipelineOptions, PipelineResult, ExperimentResult, EyeDescriptor } from './result.js'
-export type { Modeling, PipelineModeling } from './modeling.js'
-export { modelingFromCircuitJson } from './modeling.js'
-export { runPipeline } from './run.js'
+export type { PipelineOptions, PipelineResult, ExperimentResult, EyeDescriptor } from './result'
+export type { Modeling, PipelineModeling } from './modeling'
+export { modelingFromCircuitJson } from './modeling'
+export { runPipeline } from './run'

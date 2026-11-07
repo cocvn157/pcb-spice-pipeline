@@ -1,4 +1,4 @@
-import { diagnostics, type DiagnosticInit } from '../kernel/index.js'
+import { diagnostics, type DiagnosticInit } from '../kernel'
 
 const raise = diagnostics('extraction', [
   'native_convergence', 'native_geometry', 'native_solver', 'fasthenry_output', 'fasthenry_ports', 'fastercap_output',

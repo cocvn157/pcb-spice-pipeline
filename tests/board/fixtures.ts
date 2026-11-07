@@ -1,10 +1,10 @@
 // Every repo board fixture with the modeling the old suite uses for it. Shared by the golden tests.
 import { readFileSync } from 'node:fs'
 import type { CircuitJson } from 'circuit-json'
-import type { Modeling } from '../../src/board/index.js'
-import { groundPlaneFixture, routedGroundPlaneFixture } from '../fixtures/ground-plane.js'
-import { nativeChannel, modeling as nativeModeling, curvedPoints } from '../fixtures/native-channel.js'
-import { viaInPad } from '../fixtures/via-in-pad.js'
+import type { Modeling } from '../../src/board'
+import { groundPlaneFixture, routedGroundPlaneFixture } from '../fixtures/ground-plane'
+import { nativeChannel, modeling as nativeModeling, curvedPoints } from '../fixtures/native-channel'
+import { viaInPad } from '../fixtures/via-in-pad'
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/${name}`, import.meta.url), 'utf8'))
 export interface BoardCase { name: string; circuit: CircuitJson; modeling: Modeling }

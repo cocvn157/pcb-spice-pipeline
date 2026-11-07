@@ -1,9 +1,9 @@
 // Today's declaration/plan shapes (was declarations.ts + general-spice.ts types). Serialized into
 // experiments/<id>/experiment.json and PipelineResult.experiments[].plan: do not reorder or rename.
 import type { IbisConversionMetadata } from '@tscircuit/ibis-to-spice'
-import type { SafeId } from '../kernel/index.js'
-import type { CircuitJson, PortSelector, SimulationExperiment, SimulationIbisModel, SimulationIbisPinState, SimulationDigitalStimulus } from '../board/index.js'
-import type { WaveformRows } from '../observation/index.js'
+import type { SafeId } from '../kernel'
+import type { CircuitJson, PortSelector, SimulationExperiment, SimulationIbisModel, SimulationIbisPinState, SimulationDigitalStimulus } from '../board'
+import type { WaveformRows } from '../observation'
 
 /** simulation's slice of the flat public `Modeling`. (`channelReference` is shared with board's slice.) */
 export interface SimulationModeling {

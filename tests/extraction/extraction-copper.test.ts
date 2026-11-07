@@ -1,11 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
-import {rootScope,type FileMap} from '../../src/kernel/index.js'
-import type {RunSolver} from '../../src/solver/index.js'
-import {extractChannel} from '../../src/extraction/index.js'
-import {geometryFromCircuitJson} from '../../src/board/index.js'
-import {groundPlaneFixture} from '../fixtures/ground-plane.js'
+import {rootScope,type FileMap} from '../../src/kernel'
+import type {RunSolver} from '../../src/solver'
+import {extractChannel} from '../../src/extraction'
+import {geometryFromCircuitJson} from '../../src/board'
+import {groundPlaneFixture} from '../fixtures/ground-plane'
 
 const context=(runSolver: RunSolver)=>({runSolver,progress:()=>{}})
 const extract=async(...[geometry,modeling,files,runSolver]: [Parameters<typeof extractChannel>[0],Parameters<typeof extractChannel>[1],FileMap,RunSolver])=>{

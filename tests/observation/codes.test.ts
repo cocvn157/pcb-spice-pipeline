@@ -1,8 +1,8 @@
 // Every code in src/observation/diagnostics.ts, raised with today's message (module rule M3).
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { Diagnostic } from '../../src/kernel/index.js'
-import { foldProbeEye, probeWaveformRows } from '../../src/observation/index.js'
+import { Diagnostic } from '../../src/kernel'
+import { foldProbeEye, probeWaveformRows } from '../../src/observation'
 
 const rows = [[0, 0], [5, 1]], eye = { name: 'e', column: 1, unitIntervalSeconds: 1, timeOriginSeconds: .5, startTimeSeconds: 0, endTimeSeconds: 5 }
 const diag = (code: string, message: string) => (e: unknown) => {

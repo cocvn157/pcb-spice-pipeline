@@ -1,5 +1,5 @@
 // Today's ddr.ts types. DdrAssessment is embedded verbatim in eye-data.json: do not reorder or rename.
-import type { EyePlan, VoltageProbePlan } from '../simulation/index.js'
+import type { EyePlan, VoltageProbePlan } from '../simulation'
 
 /** All voltages are relative to the DQ probe's ground; no datasheet limits are inferred. */
 export interface DdrAssessmentConfig {

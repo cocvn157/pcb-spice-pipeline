@@ -1,5 +1,5 @@
 import { isAbsolute, relative } from 'node:path'
-import { fail } from './diagnostics.js'
+import { fail } from './diagnostics'
 
 /** Same rule as model-source.ts relativeFile (buffers owns the IBIS copy; adapters keeps its own). */
 export function relativeFile(path: string): string {

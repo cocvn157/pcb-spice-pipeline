@@ -15,8 +15,8 @@ export type {
   SimulationModeling, CircuitNodes, PipelineIbisModel, VoltageProbePlan, EyePlan, SimulationPlan, SafeEyePlan, SafeSimulationPlan,
   Declarations, ElectricalModel, CompiledModel, ExperimentModel, ElectricalSources, SimulationSpiceOptions,
   Experiments, BoundExperiments, ExperimentRun, ExperimentResult,
-} from './types.js'
-export { circuitNodes, generalDeclarations, modelRunDefinition } from './declarations.js'
-export { namespaceSpice, electricalSources, simulationSpiceOptions, generalSimulationSpice, validateProbeScope } from './netlist.js'
-export { safeSimulationPlans, electricalNodeMap, bindExperiments, runExperiment, simulationResultCircuitJson, experimentResult } from './run.js'
-export { transmittedBits } from './stimulus.js'
+} from './types'
+export { circuitNodes, generalDeclarations, modelRunDefinition } from './declarations'
+export { namespaceSpice, electricalSources, simulationSpiceOptions, generalSimulationSpice, validateProbeScope } from './netlist'
+export { safeSimulationPlans, electricalNodeMap, bindExperiments, runExperiment, simulationResultCircuitJson, experimentResult } from './run'
+export { transmittedBits } from './stimulus'

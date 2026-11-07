@@ -9,7 +9,7 @@
  */
 export type {
   Signal, WaveformRows, EyeGate, EyeRequest, EyeAlignment, EyeLimits, FoldOptions, EyeSample, EyeMetrics, FoldedEye, EyeResult,
-} from './types.js'
-export { probeWaveformRows } from './waveform.js'
-export { foldProbeEye } from './fold.js'
-export { foldEyes, eyeDataCsv, type EyeFoldInput } from './artifacts.js'
+} from './types'
+export { probeWaveformRows } from './waveform'
+export { foldProbeEye } from './fold'
+export { foldEyes, eyeDataCsv, type EyeFoldInput } from './artifacts'

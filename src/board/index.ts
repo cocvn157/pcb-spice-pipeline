@@ -8,18 +8,18 @@
  * Imports: kernel. (Was: schema.ts, circuit-schema.mjs, stackup.ts, subcircuit-scope.ts,
  * geometry.ts minus decks, copper.ts minus meshing/decks, stage-returns.ts.)
  */
-export type { CircuitJson, SimulationExperiment, SimulationIbisModel, SimulationIbisPinState, SimulationDigitalStimulus } from './schema.js'
-export { parseRecord, recordSchema, validateCircuitRecords } from './schema.js'
-export { type Board, admitBoard, circuitArtifact } from './model.js'
-export { type BoardStackup, type CopperLayer, type DielectricLayer, stackupFromCircuitJson, defaultCopperConductivitySm } from './stackup.js'
-export { subcircuitTree, type SubcircuitTree } from './subcircuit.js'
-export { connectedSourceIds } from './connectivity.js'
+export type { CircuitJson, SimulationExperiment, SimulationIbisModel, SimulationIbisPinState, SimulationDigitalStimulus } from './schema'
+export { parseRecord, recordSchema, validateCircuitRecords } from './schema'
+export { type Board, admitBoard, circuitArtifact } from './model'
+export { type BoardStackup, type CopperLayer, type DielectricLayer, stackupFromCircuitJson, defaultCopperConductivitySm } from './stackup'
+export { subcircuitTree, type SubcircuitTree } from './subcircuit'
+export { connectedSourceIds } from './connectivity'
 export type {
   PortSelector, ExtractionSettings, ReturnProfile, LaneModeling, BoardModeling, Modeling, ResolvedModeling,
   RouteStage, SourcePort, PcbTrace, RoutePoint, RoutedPoint, LaneMapping, Conductor, GeometryCell, Geometry, ChannelGeometry,
   RoutedCopper, CopperPoint, CopperXYZ, CopperPolygon, CopperSolid, CopperSegment, CopperPath, CopperPour,
-} from './geometry/types.js'
-export { selectPort, resolveRouteVias } from './geometry/ports.js'
-export { polygonContains, ringArea, closeRing } from './geometry/polygon.js'
-export { derivedReturnWidthMm, groundPourLayers, stackupStageReturn, measuredLaneSpacingMm, type StageReturn, type StageReturnPart } from './geometry/returns.js'
-export { validateModeling, geometryFromCircuitJson, channelGeometry } from './geometry/index.js'
+} from './geometry/types'
+export { selectPort, resolveRouteVias } from './geometry/ports'
+export { polygonContains, ringArea, closeRing } from './geometry/polygon'
+export { derivedReturnWidthMm, groundPourLayers, stackupStageReturn, measuredLaneSpacingMm, type StageReturn, type StageReturnPart } from './geometry/returns'
+export { validateModeling, geometryFromCircuitJson, channelGeometry } from './geometry'

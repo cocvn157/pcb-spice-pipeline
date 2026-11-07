@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { geometryFromCircuitJson } from '../../src/board/index.js'
-import { fastHenryDeck, fasterCapDeck, groundMesh, copperFasterCapDeck, panelAspectLimit, meshPolygon } from '../../src/extraction/index.js'
-import { groundPlaneFixture, routedGroundPlaneFixture } from '../fixtures/ground-plane.js'
+import { geometryFromCircuitJson } from '../../src/board'
+import { fastHenryDeck, fasterCapDeck, groundMesh, copperFasterCapDeck, panelAspectLimit, meshPolygon } from '../../src/extraction'
+import { groundPlaneFixture, routedGroundPlaneFixture } from '../fixtures/ground-plane'
 
 function closedSurfaceVolume(surface: string): number {
   assert.match(surface.split('\n')[0], /\bmillimetres\b/)

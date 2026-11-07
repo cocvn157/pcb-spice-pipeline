@@ -2,8 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import type { CircuitJson } from 'circuit-json'
-import { channelSpice, fastHenryDeck, fasterCapDeck, type StageMatrices as ChannelMatrices, type Matrix } from '../../src/extraction/index.js'
-import { geometryFromCircuitJson, type Modeling } from '../../src/board/index.js'
+import { channelSpice, fastHenryDeck, fasterCapDeck, type StageMatrices as ChannelMatrices, type Matrix } from '../../src/extraction'
+import { geometryFromCircuitJson, type Modeling } from '../../src/board'
 
 const baseCircuit: CircuitJson = JSON.parse(await readFile(new URL('../fixtures/straight.circuit.json', import.meta.url), 'utf8'))
 const baseModeling: Modeling = JSON.parse(await readFile(new URL('../fixtures/straight.modeling.json', import.meta.url), 'utf8'))

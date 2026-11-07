@@ -1,6 +1,6 @@
-import type { Artifact, ArtifactScope } from '../kernel/index.js'
-import type { CircuitJson } from './schema.js'
-import { validateCircuitRecords } from './schema.js'
+import type { Artifact, ArtifactScope } from '../kernel'
+import type { CircuitJson } from './schema'
+import { validateCircuitRecords } from './schema'
 
 declare const boardBrand: unique symbol
 /**

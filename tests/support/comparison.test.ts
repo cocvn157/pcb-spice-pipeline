@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { assertComparable, compareRuns, comparisonIdentity, comparisonPairs, stimulusActivity, waveformDifference,
-  type ComparisonInput } from './legacy/comparison.js'
+  type ComparisonInput } from './legacy/comparison'
 
 const fixture = (): ComparisonInput => {
   const references = { pullup: 'vdd', pulldown: 'gnd', powerClamp: 'vdd', groundClamp: 'gnd' }

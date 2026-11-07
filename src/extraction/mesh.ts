@@ -5,8 +5,8 @@ import earcut, { refine } from 'earcut'
 import { Clipper64, PolyTree64, ClipType, FillRule, type PolyPath64 } from 'clipper2-ts'
 import { polygonContains as contains, ringArea as area, closeRing as closed,
   type CopperPoint as Point, type CopperXYZ as XYZ, type CopperPolygon as Polygon, type CopperSolid as Solid,
-  type CopperPath as Path, type RoutedCopper } from '../board/index.js'
-import { fail } from './diagnostics.js'
+  type CopperPath as Path, type RoutedCopper } from '../board'
+import { fail } from './diagnostics'
 
 const finite = (value: number) => Number.isFinite(value)
 

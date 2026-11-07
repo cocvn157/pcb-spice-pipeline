@@ -1,5 +1,5 @@
 // Planar polygon helpers shared by board (connectivity) and extraction (meshing), mm.
-import type { CopperPoint as Point, CopperPolygon as Polygon } from './types.js'
+import type { CopperPoint as Point, CopperPolygon as Polygon } from './types'
 
 export const ringArea = (ring: Point[]) => ring.reduce((s, p, i) => {
   const q = ring[(i + 1) % ring.length]; return s + p[0] * q[1] - q[0] * p[1]

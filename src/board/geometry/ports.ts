@@ -1,6 +1,6 @@
-import type { CircuitJson } from '../schema.js'
-import { fail } from '../diagnostics.js'
-import type { PcbTrace, PortSelector, RoutedPoint, SourcePort } from './types.js'
+import type { CircuitJson } from '../schema'
+import { fail } from '../diagnostics'
+import type { PcbTrace, PortSelector, RoutedPoint, SourcePort } from './types'
 
 /** Native pcbPath keeps via dimensions on the associated physical record. */
 export function resolveRouteVias(circuit: CircuitJson, trace: PcbTrace): RoutedPoint[] {

@@ -1,8 +1,8 @@
 import { Circuit, analog } from '@tscircuit/core'
 import React from 'react'
-import { modelingFromCircuitJson } from '../../src/pipeline/index.js'
-import { geometryFromCircuitJson } from '../../src/board/index.js'
-import { fastHenryDeck } from '../../src/extraction/index.js'
+import { modelingFromCircuitJson } from '../../src/pipeline'
+import { geometryFromCircuitJson } from '../../src/board'
+import { fastHenryDeck } from '../../src/extraction'
 
 const lanes = ['DQ', 'DQS', 'DQSn'] as const
 let state = 0x7f

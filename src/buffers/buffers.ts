@@ -1,9 +1,9 @@
 // The IBIS part of general-pipeline.ts runPipeline (hash pinning, loading, conversion, assembly).
 import * as converter from '@tscircuit/ibis-to-spice'
-import { sha256, type Artifact, type ArtifactScope, type Produced } from '../kernel/index.js'
-import { fail } from './diagnostics.js'
-import { loadModelSource } from './source.js'
-import type { AdmittedBuffers, AssemblyEntry, BufferModeling, CompiledBuffer, IbisSources, LoadedModelSource, ModelRunDefinition, ModelSourceRequest } from './types.js'
+import { sha256, type Artifact, type ArtifactScope, type Produced } from '../kernel'
+import { fail } from './diagnostics'
+import { loadModelSource } from './source'
+import type { AdmittedBuffers, AssemblyEntry, BufferModeling, CompiledBuffer, IbisSources, LoadedModelSource, ModelRunDefinition, ModelSourceRequest } from './types'
 
 /** Fails 'converter_version' unless the pinned upstream general converter is installed. Today's first IBIS check. */
 export function assertConverter(): void {

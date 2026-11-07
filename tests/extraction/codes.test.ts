@@ -2,10 +2,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { rootScope } from '../../src/kernel/index.js'
-import { geometryFromCircuitJson, type Modeling } from '../../src/board/index.js'
-import { extractChannel, parseFastHenry, parseFasterCap, validateMatrix, meshPolygon, channelSpice } from '../../src/extraction/index.js'
-import { consistentSolver, type Tweak } from './solvers.js'
+import { rootScope } from '../../src/kernel'
+import { geometryFromCircuitJson, type Modeling } from '../../src/board'
+import { extractChannel, parseFastHenry, parseFasterCap, validateMatrix, meshPolygon, channelSpice } from '../../src/extraction'
+import { consistentSolver, type Tweak } from './solvers'
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/${name}`, import.meta.url), 'utf8'))
 const modeling: Modeling = read('straight.modeling.json'), geometry = geometryFromCircuitJson(read('straight.circuit.json'), modeling)

@@ -1,7 +1,7 @@
 // FastHenry / FasterCap deck text (was geometry.ts fastHenryDeck/fasterCapDeck + copper.ts copper*Deck).
 import { polygonContains as contains, type CopperPoint as Point, type CopperXYZ as XYZ, type CopperPath as Path,
-  type ExtractionSettings, type GeometryCell } from '../board/index.js'
-import { groundMesh, pathSolids, surfacePanels, copperPanelSizing } from './mesh.js'
+  type ExtractionSettings, type GeometryCell } from '../board'
+import { groundMesh, pathSolids, surfacePanels, copperPanelSizing } from './mesh'
 
 // FasterCap has absolute panel-area thresholds. Millimetre coordinates keep
 // real fine copper edges numerically resolvable. Electrostatic capacitance

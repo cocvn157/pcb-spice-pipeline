@@ -3,14 +3,14 @@
 // while it still existed (see tests/support/golden.ts).
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { rootScope, type FileMap } from '../../src/kernel/index.js'
-import type { RunSolver } from '../../src/solver/index.js'
-import { geometryFromCircuitJson, type Geometry, type Modeling } from '../../src/board/index.js'
-import { extractChannel, fastHenryDeck, fasterCapDeck, copperFasterCapDeck, channelSpice } from '../../src/extraction/index.js'
+import { rootScope, type FileMap } from '../../src/kernel'
+import type { RunSolver } from '../../src/solver'
+import { geometryFromCircuitJson, type Geometry, type Modeling } from '../../src/board'
+import { extractChannel, fastHenryDeck, fasterCapDeck, copperFasterCapDeck, channelSpice } from '../../src/extraction'
 import { fixtureSolver } from '../fixtures/solver.mjs'
-import { boardCases } from '../board/fixtures.js'
-import { goldenDigests } from '../support/golden.js'
-import { consistentSolver } from './solvers.js'
+import { boardCases } from '../board/fixtures'
+import { goldenDigests } from '../support/golden'
+import { consistentSolver } from './solvers'
 
 const golden = goldenDigests(new URL('./golden.snapshot.json', import.meta.url))
 const cases = (await boardCases()).flatMap(c => {

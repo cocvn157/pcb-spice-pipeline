@@ -1,10 +1,10 @@
 import { z } from 'zod'
-import type { CircuitJson, BoardModeling } from '../board/index.js'
-import type { ExtractionModeling } from '../extraction/index.js'
-import type { SimulationModeling } from '../simulation/index.js'
-import type { DdrModeling } from '../ddr/index.js'
-import type { BufferModeling } from '../buffers/index.js'
-import { fail } from './diagnostics.js'
+import type { CircuitJson, BoardModeling } from '../board'
+import type { ExtractionModeling } from '../extraction'
+import type { SimulationModeling } from '../simulation'
+import type { DdrModeling } from '../ddr'
+import type { BufferModeling } from '../buffers'
+import { fail } from './diagnostics'
 
 /**
  * The public, flat `Modeling` shape is unchanged for callers; it is the intersection of

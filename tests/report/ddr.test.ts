@@ -2,9 +2,9 @@
 // The DDR/audit-only part also lives in tests/ddr/ddr.test.ts. Assertions unchanged.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { assessDdr, type DdrAssessmentConfig, type ResolvedDdrAssessment } from '../../src/ddr/index.js'
-import { foldProbeEye as fold, type EyeGate } from '../../src/observation/index.js'
-import { reportFiles, reportSections } from '../../src/report/sections.js'
+import { assessDdr, type DdrAssessmentConfig, type ResolvedDdrAssessment } from '../../src/ddr'
+import { foldProbeEye as fold, type EyeGate } from '../../src/observation'
+import { reportFiles, reportSections } from '../../src/report/sections'
 import { receivedDqsWindows } from '../../scripts/verification/audit-ddr.mjs'
 
 // Old foldProbeEye(rows, {...eye, captureTimesSeconds}, points) in observation's signature.

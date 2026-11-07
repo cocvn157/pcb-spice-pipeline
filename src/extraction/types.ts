@@ -1,7 +1,7 @@
-import type { ExtractionSettings } from '../board/index.js'
-import type { Matrix } from './linalg.js'
-import type { ImpedanceSample } from './parse.js'
-import type { MatrixCheck, CapacitanceCheck } from './checks.js'
+import type { ExtractionSettings } from '../board'
+import type { Matrix } from './linalg'
+import type { ImpedanceSample } from './parse'
+import type { MatrixCheck, CapacitanceCheck } from './checks'
 
 export type { ExtractionSettings, Matrix, ImpedanceSample, MatrixCheck, CapacitanceCheck }
 /** extraction's slice of the flat public `Modeling`. */

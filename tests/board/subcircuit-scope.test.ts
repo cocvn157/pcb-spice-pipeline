@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { subcircuitTree } from '../../src/board/index.js'
+import { subcircuitTree } from '../../src/board'
 
 const group = (id: string, parent?: string, subcircuit = true) => ({ type: 'source_group', source_group_id: id,
   parent_source_group_id: parent, ...(subcircuit ? { subcircuit_id: `sub_${id}` } : {}) })

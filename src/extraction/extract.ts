@@ -1,14 +1,14 @@
 // Native extraction per geometry cell (was extraction.ts extractChannel + general-pipeline's channel.cir line).
-import type { Artifact, ArtifactScope, DiagnosticInit, Produced } from '../kernel/index.js'
-import { invoke, type SolverContext, type SolverRequest } from '../solver/index.js'
-import type { Geometry, GeometryCell } from '../board/index.js'
-import { fail } from './diagnostics.js'
-import { fastHenryDeck, fasterCapDeck, copperCapacitanceScaleToFarads } from './decks.js'
-import { checkNativeRun, impedanceSamples, parseFasterCap } from './parse.js'
-import { validateMatrix, loopImpedance, referenceCapacitance, type MatrixCheck, type CapacitanceCheck } from './checks.js'
-import { multiply, transpose, sum, type Matrix } from './linalg.js'
-import { channelSpice } from './rlgc.js'
-import type { ExtractionModeling, ExtractedChannel, ExtractedStage, RefinementCheck } from './types.js'
+import type { Artifact, ArtifactScope, DiagnosticInit, Produced } from '../kernel'
+import { invoke, type SolverContext, type SolverRequest } from '../solver'
+import type { Geometry, GeometryCell } from '../board'
+import { fail } from './diagnostics'
+import { fastHenryDeck, fasterCapDeck, copperCapacitanceScaleToFarads } from './decks'
+import { checkNativeRun, impedanceSamples, parseFasterCap } from './parse'
+import { validateMatrix, loopImpedance, referenceCapacitance, type MatrixCheck, type CapacitanceCheck } from './checks'
+import { multiply, transpose, sum, type Matrix } from './linalg'
+import { channelSpice } from './rlgc'
+import type { ExtractionModeling, ExtractedChannel, ExtractedStage, RefinementCheck } from './types'
 
 /**
  * Per cell, in stage order, under `<scope>/stage-<N>/`:

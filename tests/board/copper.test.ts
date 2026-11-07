@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { geometryFromCircuitJson } from '../../src/board/index.js'
-import { fastHenryDeck } from '../../src/extraction/index.js'
-import { groundPlaneFixture, routedGroundPlaneFixture } from '../fixtures/ground-plane.js'
+import { geometryFromCircuitJson } from '../../src/board'
+import { fastHenryDeck } from '../../src/extraction'
+import { groundPlaneFixture, routedGroundPlaneFixture } from '../fixtures/ground-plane'
 
 test('ground selection follows reference connectivity and is_ground, independent of net name or proximity', () => {
   const { circuit, modeling } = groundPlaneFixture()

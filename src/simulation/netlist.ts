@@ -1,9 +1,9 @@
 // Was src/general-spice.ts (electrical sources, experiment netlist, probe scope). Logic and messages unchanged.
-import type { CircuitJson, Geometry } from '../board/index.js'
-import { selectPort } from '../board/index.js'
-import { channelSpice, type StageMatrices } from '../extraction/index.js'
-import { fail } from './diagnostics.js'
-import type { CircuitNodes, CompiledModel, ElectricalModel, ElectricalSources, SimulationModeling, SimulationPlan, SimulationSpiceOptions } from './types.js'
+import type { CircuitJson, Geometry } from '../board'
+import { selectPort } from '../board'
+import { channelSpice, type StageMatrices } from '../extraction'
+import { fail } from './diagnostics'
+import type { CircuitNodes, CompiledModel, ElectricalModel, ElectricalSources, SimulationModeling, SimulationPlan, SimulationSpiceOptions } from './types'
 
 const num = (value: number): string => Number(value.toPrecision(17)).toString()
 const finite = (input: unknown, label: string, positive = false): number => {

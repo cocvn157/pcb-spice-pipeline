@@ -2,8 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import type { CircuitJson } from 'circuit-json'
-import { stackupFromCircuitJson, geometryFromCircuitJson } from '../../src/board/index.js'
-import { fastHenryDeck } from '../../src/extraction/index.js'
+import { stackupFromCircuitJson, geometryFromCircuitJson } from '../../src/board'
+import { fastHenryDeck } from '../../src/extraction'
 
 const fixture = (): CircuitJson => [
   { type: 'pcb_board', pcb_board_id: 'pcb_board_0', num_layers: 4, width: 10, height: 10, center: { x: 0, y: 0 }, thickness: 1.6 },

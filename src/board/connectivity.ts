@@ -1,4 +1,4 @@
-import type { CircuitJson } from './schema.js'
+import type { CircuitJson } from './schema'
 
 /** Resolve net membership through electrical connections, never copper proximity. */
 export function connectedSourceIds(circuit: CircuitJson, seed: string): Set<string> {

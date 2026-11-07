@@ -4,10 +4,10 @@
 // The composed-pipeline goldens moved to tests/pipeline/golden.test.ts.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { geometryFromCircuitJson } from '../../src/board/index.js'
-import { generalDeclarations, electricalSources, generalSimulationSpice, simulationSpiceOptions, namespaceSpice } from '../../src/simulation/index.js'
+import { geometryFromCircuitJson } from '../../src/board'
+import { generalDeclarations, electricalSources, generalSimulationSpice, simulationSpiceOptions, namespaceSpice } from '../../src/simulation'
 import { fixture } from '../fixtures/general.mjs'
-import { goldenDigests, outcome } from '../support/golden.js'
+import { goldenDigests, outcome } from '../support/golden'
 
 const golden = goldenDigests(new URL('./golden.snapshot.json', import.meta.url))
 

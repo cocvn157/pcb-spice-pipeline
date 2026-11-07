@@ -1,9 +1,9 @@
 // Was src/report.ts: report context, CSV files and HTML sections. Bytes unchanged.
-import type { CircuitJson, SimulationIbisPinState, Geometry } from '../board/index.js'
-import { selectPort } from '../board/index.js'
-import type { SimulationPlan } from '../simulation/index.js'
-import type { DdrAssessment } from '../ddr/index.js'
-import type { Modeling } from '../pipeline/index.js'
+import type { CircuitJson, SimulationIbisPinState, Geometry } from '../board'
+import { selectPort } from '../board'
+import type { SimulationPlan } from '../simulation'
+import type { DdrAssessment } from '../ddr'
+import type { Modeling } from '../pipeline'
 
 export type ReportTest = Pick<SimulationPlan, 'startTimeSeconds' | 'durationSeconds' | 'maxStepSeconds' | 'stimuli' | 'states' | 'models'>
 export interface ReportContext {

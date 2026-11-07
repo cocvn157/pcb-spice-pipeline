@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { geometryFromCircuitJson, resolveRouteVias } from '../../src/board/index.js'
-import { fasterCapDeck } from '../../src/extraction/index.js'
-import { nativeChannel, modeling, curvedPoints } from '../fixtures/native-channel.js'
+import { geometryFromCircuitJson, resolveRouteVias } from '../../src/board'
+import { fasterCapDeck } from '../../src/extraction'
+import { nativeChannel, modeling, curvedPoints } from '../fixtures/native-channel'
 
 test('native pcbPath resolves via dimensions from pcb_via', async () => {
   const circuit = await nativeChannel({ vias: true })

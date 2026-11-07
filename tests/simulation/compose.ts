@@ -1,16 +1,16 @@
 // Test helper: today's runPipeline order composed by hand from the new modules (board, buffers, simulation,
 // extraction, ddr, observation), without the pipeline module. Exercises runExperiment's acceptance rules.
-import { ArtifactLedger, rootScope } from '../../src/kernel/index.js'
-import type { RunSolver } from '../../src/solver/index.js'
-import { geometryFromCircuitJson, validateCircuitRecords, type CircuitJson, type Modeling as BoardModeling } from '../../src/board/index.js'
-import { extractChannel, type ExtractionModeling } from '../../src/extraction/index.js'
-import { foldEyes, type EyeFoldInput } from '../../src/observation/index.js'
-import { assertConverter, admitBuffers, compileBuffers, ibisAssembly, type BufferModeling, type IbisSources } from '../../src/buffers/index.js'
+import { ArtifactLedger, rootScope } from '../../src/kernel'
+import type { RunSolver } from '../../src/solver'
+import { geometryFromCircuitJson, validateCircuitRecords, type CircuitJson, type Modeling as BoardModeling } from '../../src/board'
+import { extractChannel, type ExtractionModeling } from '../../src/extraction'
+import { foldEyes, type EyeFoldInput } from '../../src/observation'
+import { assertConverter, admitBuffers, compileBuffers, ibisAssembly, type BufferModeling, type IbisSources } from '../../src/buffers'
 import {
   generalDeclarations, electricalSources, safeSimulationPlans, modelRunDefinition, bindExperiments, electricalNodeMap,
   runExperiment, simulationResultCircuitJson, experimentResult, type ExperimentRun, type SimulationModeling,
-} from '../../src/simulation/index.js'
-import { resolveDdrAssessments, assessDdr, type DdrModeling } from '../../src/ddr/index.js'
+} from '../../src/simulation'
+import { resolveDdrAssessments, assessDdr, type DdrModeling } from '../../src/ddr'
 
 export type ComposedModeling = BoardModeling & ExtractionModeling & SimulationModeling & DdrModeling & BufferModeling
 export interface ComposeInput { circuitJson: CircuitJson; modeling: ComposedModeling; ibisSources: IbisSources; runSolver: RunSolver; onProgress?: (m: string) => void }

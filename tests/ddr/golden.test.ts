@@ -3,10 +3,10 @@
 // recorded from the pre-module flat src/ while it still existed (see tests/support/golden.ts).
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { assessDdr, resolveDdrAssessments, validateDdrConfig, type DdrAssessmentConfig, type ResolvedDdrAssessment } from '../../src/ddr/index.js'
-import type { SimulationPlan } from '../../src/simulation/index.js'
-import type { Geometry } from '../../src/board/index.js'
-import { goldenDigests } from '../support/golden.js'
+import { assessDdr, resolveDdrAssessments, validateDdrConfig, type DdrAssessmentConfig, type ResolvedDdrAssessment } from '../../src/ddr'
+import type { SimulationPlan } from '../../src/simulation'
+import type { Geometry } from '../../src/board'
+import { goldenDigests } from '../support/golden'
 
 const golden = goldenDigests(new URL('./golden.snapshot.json', import.meta.url))
 

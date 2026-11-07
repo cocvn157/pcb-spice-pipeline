@@ -1,4 +1,4 @@
-import { diagnostics, type DiagnosticInit } from '../kernel/index.js'
+import { diagnostics, type DiagnosticInit } from '../kernel'
 
 /** Codes today's declarations.ts, general-spice.ts, stimulus.ts and the ngspice part of runPipeline raise. */
 const raise = diagnostics('simulation', [

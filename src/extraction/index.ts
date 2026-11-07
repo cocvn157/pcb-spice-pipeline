@@ -8,11 +8,11 @@
  * Imports: kernel, solver, board. (Was: extraction.ts, matrices.mjs, deck halves of
  * geometry.ts/copper.ts, spice.ts channelSpice.)
  */
-export type { ExtractionSettings, ExtractionModeling, ExtractedChannel, ExtractedStage, ChannelMatrices, Matrix, ImpedanceSample, MatrixCheck, CapacitanceCheck, RefinementCheck } from './types.js'
-export { extractChannel } from './extract.js'
-export { channelSpice, type StageMatrices } from './rlgc.js'
-export { fastHenryDeck, fasterCapDeck, copperFastHenryDeck, copperFasterCapDeck, copperCapacitanceScaleToFarads } from './decks.js'
-export { groundMesh, meshPolygon, copperPanelSizing, panelAspectLimit, panelGrading, type PanelSizing } from './mesh.js'
-export { validateMatrix, loopImpedance, referenceCapacitance } from './checks.js'
-export { parseFastHenry, parseFasterCap, type CapacitanceOutput } from './parse.js'
-export { sum, scale, transpose, multiply, symmetrize } from './linalg.js'
+export type { ExtractionSettings, ExtractionModeling, ExtractedChannel, ExtractedStage, ChannelMatrices, Matrix, ImpedanceSample, MatrixCheck, CapacitanceCheck, RefinementCheck } from './types'
+export { extractChannel } from './extract'
+export { channelSpice, type StageMatrices } from './rlgc'
+export { fastHenryDeck, fasterCapDeck, copperFastHenryDeck, copperFasterCapDeck, copperCapacitanceScaleToFarads } from './decks'
+export { groundMesh, meshPolygon, copperPanelSizing, panelAspectLimit, panelGrading, type PanelSizing } from './mesh'
+export { validateMatrix, loopImpedance, referenceCapacitance } from './checks'
+export { parseFastHenry, parseFasterCap, type CapacitanceOutput } from './parse'
+export { sum, scale, transpose, multiply, symmetrize } from './linalg'

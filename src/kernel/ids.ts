@@ -1,4 +1,4 @@
-import { fail } from './fail.js'
+import { fail } from './fail'
 declare const idBrand: unique symbol
 /** /^[a-zA-Z0-9_-]+$/ — safe as a path segment and a SPICE identifier fragment. */
 export type SafeId = string & { readonly [idBrand]: true }
