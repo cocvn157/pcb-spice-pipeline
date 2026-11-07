@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
-import { transmittedBits } from "../../dist/stimulus.js"
+import { transmittedBits } from "../../dist/index.js"
 
 const [file, scenario] = process.argv.slice(2)
 assert.ok(file && ["rs485", "cmos"].includes(scenario), "Usage: node verify-board.mjs CIRCUIT_JSON rs485|cmos")

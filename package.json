@@ -20,8 +20,8 @@
       "import": "./dist/index.js"
     },
     "./node": {
-      "types": "./dist/node.d.ts",
-      "import": "./dist/node.js"
+      "types": "./dist/adapters/index.d.ts",
+      "import": "./dist/adapters/index.js"
     }
   },
   "files": [
@@ -30,14 +30,15 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --import tsx --test tests/*.test.mjs tests/*.test.ts",
+    "test": "node --import tsx --test 'tests/*.test.mjs' 'tests/*.test.ts' 'tests/*/*.test.mjs' 'tests/*/*.test.ts'",
     "test:native": "npm run build && node --import tsx --test tests/general.integration.mjs",
     "typecheck": "tsc --noEmit && tsc -p tests/tsconfig.json",
     "build": "node scripts/build-client.mjs --clean && tsc && node scripts/bundle.mjs",
     "prepack": "npm run build",
     "pretest": "npm run build",
     "pretypecheck": "node scripts/build-client.mjs",
-    "test:package": "node --import tsx scripts/test-package.mjs"
+    "test:package": "node --import tsx scripts/test-package.mjs",
+    "check:modules": "tsx scripts/check-modules.ts"
   },
   "dependencies": {
     "@noble/hashes": "1.8.0",

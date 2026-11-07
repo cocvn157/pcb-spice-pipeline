@@ -1,5 +1,5 @@
 import {readFile} from 'node:fs/promises'
-import {geometryFromCircuitJson} from '../../src/geometry.js'
+import {geometryFromCircuitJson} from '../../src/board/index.js'
 const read=async path=>JSON.parse(await readFile(new URL(path,import.meta.url),'utf8'))
 export const circuit=await read('./straight.circuit.json');export const physical=await read('./straight.modeling.json')
 export const fixture=()=>{

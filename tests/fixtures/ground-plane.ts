@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
-import type { CircuitJson } from '../../src/schema.js'
-import type { Modeling } from '../../src/geometry.js'
+import type { CircuitJson } from '../../src/board/index.js'
+import type { Modeling } from '../../src/pipeline/index.js'
 
 export function groundPlaneFixture(): { circuit: CircuitJson; modeling: Modeling } {
   const circuit = JSON.parse(readFileSync(new URL('./straight.circuit.json', import.meta.url), 'utf8')) as CircuitJson

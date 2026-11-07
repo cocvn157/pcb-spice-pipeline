@@ -1,0 +1,4 @@
+{
+  "$comment": "Migration exemptions read by scripts/check-modules.ts (ARCHITECTURE.md, staged migration step 3). The migration is complete: no legacy paths and no module waivers remain. An entry past its ISO expiry fails check:modules.",
+  "modules": {}
+}

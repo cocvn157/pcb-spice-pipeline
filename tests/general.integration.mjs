@@ -5,7 +5,7 @@ import {join} from 'node:path'
 import {fileURLToPath} from 'node:url'
 import {runPipeline,generateReport} from '../dist/index.js'
 import {createNativeSolver,loadIbisSources,writePipelineOutput} from '../dist/node.js'
-import {channelSpice} from '../src/spice.js'
+import {channelSpice} from '../src/extraction/index.js'
 import {inMemoryInput} from './fixtures/in-memory.mjs'
 
 const root=fileURLToPath(new URL('../',import.meta.url)),output=join(root,'runs','native-library-regression')
