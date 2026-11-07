@@ -36,6 +36,7 @@ export const a = 1\n`,
   'tools/exemptions.json': '{}\n',
 }
 
+/** Writes the base tree plus overrides (null deletes a file) to a fresh temp repo, removed after the test. */
 function repo(t: { after(fn: () => void): void }, overrides: Record<string, string | null> = {}): string {
   const root = mkdtempSync(join(tmpdir(), 'check-modules-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
@@ -46,9 +47,12 @@ function repo(t: { after(fn: () => void): void }, overrides: Record<string, stri
   }
   return root
 }
-const check = (root: string, today = TODAY) => runChecks(root, { today })
-const rules = (vs: Violation[]) => vs.map(v => v.rule)
-const lines = (vs: Violation[]) => vs.map(formatViolation)
+/** Runs every module check on a temp repo with a fixed date, so expiry results are deterministic. */
+const check = (root: string, today: string = TODAY): Violation[] => runChecks(root, { today })
+/** Just the rule ids of the violations, for order-sensitive comparisons. */
+const rules = (vs: Violation[]): Violation['rule'][] => vs.map(v => v.rule)
+/** The violations as the script prints them. */
+const lines = (vs: Violation[]): string[] => vs.map(formatViolation)
 
 test('a conforming tree has no violations', t => {
   assert.deepEqual(lines(check(repo(t))), [])

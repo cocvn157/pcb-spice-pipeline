@@ -22,13 +22,17 @@ export function groundPourLayers(circuit: CircuitJson, referenceSourcePortId?: s
  * copper layer that carries a ground pour, so a stripline gets both planes.
  * Heights, thicknesses and the dielectric between come from pcb_stackup. */
 export function stackupStageReturn(stackup: BoardStackup, groundLayers: Set<string>, layer: string): StageReturn {
-  const copper = stackup.copperLayers, index = copper.findIndex(l => l.name === layer)
+  const copper = stackup.copperLayers
+  const index = copper.findIndex(l => l.name === layer)
   if (index < 0) fail('stackup', `No copper z range for ${layer}`)
-  const signal = copper[index], center = (l: { zMinMm: number; zMaxMm: number }) => (l.zMinMm + l.zMaxMm) / 2
+  const signal = copper[index]
+  /** Mid-height of a copper layer in mm. */
+  const center = (l: { zMinMm: number; zMaxMm: number }): number => (l.zMinMm + l.zMaxMm) / 2
   const planes = [copper[index - 1], copper[index + 1]].filter(l => l && groundLayers.has(l.name))
   if (!planes.length)
     fail('return_geometry', `${layer}: no adjacent copper layer carries a ground pour; supply a straightened-stage profile for ${layer}`)
-  const lo = Math.min(...planes.map(l => l.zMinMm), signal.zMinMm), hi = Math.max(...planes.map(l => l.zMaxMm), signal.zMaxMm)
+  const lo = Math.min(...planes.map(l => l.zMinMm), signal.zMinMm)
+  const hi = Math.max(...planes.map(l => l.zMaxMm), signal.zMaxMm)
   const between = stackup.dielectrics.filter(d => d.zMinMm >= lo - 1e-9 && d.zMaxMm <= hi + 1e-9)
   if (!between.length || between.some(d => d.relativePermittivity === undefined))
     fail('return_geometry', `${layer}: dielectric relative permittivity between the signal and its ground planes is required in pcb_stackup`)
@@ -46,11 +50,16 @@ export function measuredLaneSpacingMm(routes: Point[][], layer: string): number 
   const wires = routes.map(r => r.filter(p => p.route_type === 'wire' && p.layer === layer))
   const gaps: number[] = []
   for (let j = 0; j + 1 < wires.length; j++) {
-    const [a, b] = [wires[j], wires[j + 1]], d: number[] = []
+    const [a, b] = [wires[j], wires[j + 1]]
+    const d: number[] = []
     for (const p of a) {
       let best = Infinity
       for (let k = 1; k < b.length; k++) {
-        const u = b[k - 1], v = b[k], dx = v.x - u.x, dy = v.y - u.y, l = dx * dx + dy * dy
+        const u = b[k - 1]
+        const v = b[k]
+        const dx = v.x - u.x
+        const dy = v.y - u.y
+        const l = dx * dx + dy * dy
         const t = l ? Math.max(0, Math.min(1, ((p.x - u.x) * dx + (p.y - u.y) * dy) / l)) : 0
         best = Math.min(best, Math.hypot(p.x - u.x - t * dx, p.y - u.y - t * dy))
       }

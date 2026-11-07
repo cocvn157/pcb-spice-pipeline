@@ -22,16 +22,21 @@ export function serialize(value: unknown): string {
 export type See = (label: string, value: unknown) => void
 
 /** One digest per named check over every (label, value) the body sees, compared with `file`. */
-export function goldenDigests(file: URL) {
+export function goldenDigests(file: URL): (name: string, body: (see: See) => void | Promise<void>) => Promise<void> {
   const update = process.env.UPDATE_SNAPSHOTS === '1'
   let stored: Record<string, string> = {}
-  try { stored = JSON.parse(readFileSync(file, 'utf8')) } catch { /* recorded on first UPDATE_SNAPSHOTS=1 run */ }
+  try {
+    stored = JSON.parse(readFileSync(file, 'utf8'))
+  } catch { /* recorded on first UPDATE_SNAPSHOTS=1 run */ }
   const next: Record<string, string> = {}
   if (update) test.after(() => writeFileSync(file, JSON.stringify(Object.fromEntries(Object.entries(next).sort()), null, 2) + '\n'))
   return async function check(name: string, body: (see: See) => void | Promise<void>): Promise<void> {
     const hash = createHash('sha256')
     let count = 0
-    await body((label, value) => { hash.update(label + '\0' + serialize(value) + '\0'); count++ })
+    await body((label, value) => {
+      hash.update(label + '\0' + serialize(value) + '\0')
+      count++
+    })
     const digest = `${count}:${hash.digest('hex')}`
     next[name] = digest
     if (!update) assert.equal(digest, stored[name], `${name}: outputs differ from the committed pre-module snapshot`)
@@ -40,8 +45,17 @@ export function goldenDigests(file: URL) {
 
 /** Value or error (code + message) of a call, for comparing failures. */
 export function outcome(f: () => unknown): { value: string } | { code?: string; message: string } {
-  try { return { value: serialize(f()) } } catch (e) { return { code: (e as { code?: string }).code, message: (e as Error).message } }
+  try {
+    return { value: serialize(f()) }
+  } catch (e) {
+    return { code: (e as { code?: string }).code, message: (e as Error).message }
+  }
 }
+/** Async form of outcome: awaits the call and captures its value or rejection the same way. */
 export async function outcomeAsync(f: () => Promise<unknown>): Promise<{ value: string } | { code?: string; message: string }> {
-  try { return { value: serialize(await f()) } } catch (e) { return { code: (e as { code?: string }).code, message: (e as Error).message } }
+  try {
+    return { value: serialize(await f()) }
+  } catch (e) {
+    return { code: (e as { code?: string }).code, message: (e as Error).message }
+  }
 }

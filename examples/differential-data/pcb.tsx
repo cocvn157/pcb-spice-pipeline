@@ -1,19 +1,20 @@
 import type { TraceProps } from "@tscircuit/props"
-import { Fragment } from "react"
+import { Fragment, type JSX } from "react"
 
 /** Global board millimetres; convert once to the selected port's component coordinate frame. */
 export function RoutedTrace({ from, to, origin, points, width = 0.25, name }: {
   from: string; to: string; origin: [number, number];
   points: Array<{ x: number; y: number; via?: boolean; fromLayer?: "top" | "bottom"; toLayer?: "top" | "bottom" }>;
   width?: number; name?: string;
-}) {
+}): JSX.Element {
   const path: TraceProps["pcbPath"] = [from, ...points.map(p => ({
     ...p, x: p.x - origin[0], y: p.y - origin[1],
   })), to]
   return <trace name={name} from={from} to={to} thickness={width} pcbPathRelativeTo={from} pcbPath={path} />
 }
 
-export function Soic8Pads() {
+/** SOIC-8 land pattern: two rows of four 1.6 x 0.6 mm pads at 1.27 mm pitch. */
+export function Soic8Pads(): JSX.Element {
   return <footprint>{Array.from({ length: 8 }, (_, i) => {
     const pin = i + 1
     return <Fragment key={pin}><smtpad portHints={[`pin${pin}`]} pcbX={pin <= 4 ? -3 : 3}
@@ -22,13 +23,15 @@ export function Soic8Pads() {
   })}</footprint>
 }
 
-export function Sc70Pads() {
+/** SC-70-5 land pattern: three pads on the left, two on the right, 0.65 mm pitch. */
+export function Sc70Pads(): JSX.Element {
   const pads = [[1, -1.1, 0.65], [2, -1.1, 0], [3, -1.1, -0.65], [4, 1.1, -0.65], [5, 1.1, 0.65]]
   return <footprint>{pads.map(([pin, x, y]) => <Fragment key={pin}><smtpad
     portHints={[`pin${pin}`]} pcbX={x} pcbY={y} width={0.7} height={0.35} shape="rect" /></Fragment>)}</footprint>
 }
 
-export function BenchSupply() {
+/** A 3.3 V bench supply on an unplaced two-pad PWR connector, giving the experiment defined VCC and GND nets. */
+export function BenchSupply(): JSX.Element {
   return <>
     <chip name="PWR" pcbX={-22} pcbY={7} doNotPlace
     pinLabels={{ pin1: "VCC", pin2: "GND" }} footprint={<footprint>

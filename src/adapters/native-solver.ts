@@ -41,7 +41,9 @@ export function createNativeSolver({ tools = {}, timeoutMs = 900000 }: NativeSol
       const files: Record<string, string> = Object.create(null)
       const root = await realpath(directory)
       for (const path of request.outputFiles) {
-        try { files[path] = await readFile(contained(root, await realpath(join(directory, path))), 'utf8') }
+        try {
+          files[path] = await readFile(contained(root, await realpath(join(directory, path))), 'utf8')
+        }
         catch (error) {
           if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
           // The pipeline validates required outputs and solver diagnostics.

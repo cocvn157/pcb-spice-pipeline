@@ -36,7 +36,10 @@ export interface ArtifactScope {
   json(name: string, value: unknown): Artifact
   text(name: string, body: string): Artifact
 }
-export function rootScope(owner: DomainName): ArtifactScope { return scope(owner, '') }
+/** Top-level scope (empty prefix) for one owner; every other scope is derived from it with child() or handTo(). */
+export function rootScope(owner: DomainName): ArtifactScope {
+  return scope(owner, '')
+}
 
 /** Validate and brand a relative POSIX path. */
 export function artifactPath(raw: string): ArtifactPath {
@@ -49,8 +52,10 @@ export function artifactPath(raw: string): ArtifactPath {
 /** Today's jsonFile byte format. */
 export const jsonBody = (value: unknown): string => JSON.stringify(value, null, 2) + '\n'
 
+/** Builds the scope object; every artifact it creates is stamped with `owner` and has its path validated. */
 function scope(owner: DomainName, prefix: string): ArtifactScope {
-  const at = (name: string) => artifactPath(prefix ? `${prefix}/${name}` : name)
+  /** Joins a file name onto this scope's prefix and validates the result. */
+  const at = (name: string): ArtifactPath => artifactPath(prefix ? `${prefix}/${name}` : name)
   return {
     owner, prefix,
     child: (...segments) => scope(owner, [prefix, ...segments].filter(Boolean).join('/')),
@@ -63,10 +68,11 @@ function scope(owner: DomainName, prefix: string): ArtifactScope {
 /**
  * Immutable, append-only collection of artifacts. Owned by the pipeline module alone:
  * no other module holds a ledger, so there is exactly one writer of the output FileMap.
- * Tests: tests/kernel/ledger.test.ts (collision, sorted keys).
+ * Tests: tests/kernel/index.test.ts (collision, sorted keys).
  */
 export class ArtifactLedger {
   private constructor(private readonly entries: ReadonlyMap<ArtifactPath, Artifact>) {}
+  /** The starting ledger with no artifacts; build up from here with add(). */
   static empty(): ArtifactLedger { return new ArtifactLedger(new Map()) }
   /** Fails 'artifact_collision' if any path is already present (even with an identical body). */
   add(artifacts: readonly Artifact[]): ArtifactLedger {
@@ -81,7 +87,9 @@ export class ArtifactLedger {
     }
     return new ArtifactLedger(next)
   }
+  /** True when some artifact has already been recorded at this path. */
   has(path: string): boolean { return this.entries.has(path as ArtifactPath) }
+  /** Body of the artifact at this path, or undefined when nothing was written there. */
   get(path: string): string | undefined { return this.entries.get(path as ArtifactPath)?.body }
   /** Keys sorted by code point => byte-identical FileMap for identical inputs (determinism). */
   seal(): FileMap {

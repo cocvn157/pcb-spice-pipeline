@@ -114,7 +114,7 @@ No TLA+. Nothing in this library is concurrent: stages run in order, experiments
 | Stage order; no solver before validation; admitted-before-use | Types: `Chain<>`, `PureContext`, brands |
 | Module fences: no unowned code, index-only imports, acyclic, `node:*` only in adapters | `check-modules` S1–S6 (from the filesystem and import graph) |
 | Every module tested; every declared code raised by some test | `check-modules` M2–M3 |
-| Single writer, sealed is final, sorted output | `tests/kernel/ledger.test.ts` |
+| Single writer, sealed is final, sorted output | `tests/kernel/index.test.ts` |
 | Temp dir always removed; timeout kills; only requested outputs read | `tests/adapters/native-solver.test.ts`: fault injection at each step |
 | Geometry, meshing, extraction numerics (#44 #46 #49 #53 #54) | `fast-check` properties vs exact oracle; metamorphic tests (translate, mirror, mesh halving converges); existing `scripts/verification` audits |
 | Eye folding keeps every complete window | Oracle: brute-force window enumeration vs closed-form fold |

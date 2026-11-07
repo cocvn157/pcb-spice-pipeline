@@ -30,8 +30,11 @@ function zipMember(bytes, requested) {
     const count = bytes.readUInt16LE(i + 10)
     for (let n = 0; n < count; n++) {
       assert.equal(bytes.readUInt32LE(p), 0x02014b50, 'ZIP central directory')
-      const method = bytes.readUInt16LE(p + 10), length = bytes.readUInt32LE(p + 20)
-      const nameLength = bytes.readUInt16LE(p + 28), extraLength = bytes.readUInt16LE(p + 30), commentLength = bytes.readUInt16LE(p + 32)
+      const method = bytes.readUInt16LE(p + 10)
+      const length = bytes.readUInt32LE(p + 20)
+      const nameLength = bytes.readUInt16LE(p + 28)
+      const extraLength = bytes.readUInt16LE(p + 30)
+      const commentLength = bytes.readUInt16LE(p + 32)
       const name = bytes.subarray(p + 46, p + 46 + nameLength).toString('utf8')
       if (name === requested) {
         const local = bytes.readUInt32LE(p + 42)
@@ -101,7 +104,8 @@ function csvRows(text) {
 function zeroCrossings(rows, column, after) {
   const result = []
   for (let i = 1; i < rows.length; i++) {
-    const left = rows[i - 1], right = rows[i]
+    const left = rows[i - 1]
+    const right = rows[i]
     if (right[0] < after || left[column] * right[column] >= 0) continue
     const fraction = -left[column] / (right[column] - left[column])
     result.push({ time: left[0] + fraction * (right[0] - left[0]), rising: right[column] > left[column] })
@@ -110,17 +114,29 @@ function zeroCrossings(rows, column, after) {
 }
 
 function interpolated(rows, time, column) {
-  let lo = 0, hi = rows.length - 1
+  let lo = 0
+  let hi = rows.length - 1
   assert.ok(time >= rows[0][0] && time <= rows[hi][0], 'Interpolation within measured samples')
-  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (rows[mid][0] < time) lo = mid; else hi = mid }
-  const a = rows[lo], b = rows[hi]
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1
+    if (rows[mid][0] < time) lo = mid
+    else hi = mid
+  }
+  const a = rows[lo]
+  const b = rows[hi]
   return a[column] + (b[column] - a[column]) * (time - a[0]) / (b[0] - a[0])
 }
 
 export function independentMetrics(rows, simulation, eye = { differentialColumn: 5, polarity: 1, endpoint: 'receiver' }) {
-  const ui = simulation.uiSeconds, after = simulation.excludeSeconds
-  const receiver = zeroCrossings(rows, 5, after), driver = zeroCrossings(rows, 6, after)
-  const selected = rows.map(row => { const r = [...row]; r[5] = row[eye.differentialColumn] * eye.polarity; return r })
+  const ui = simulation.uiSeconds
+  const after = simulation.excludeSeconds
+  const receiver = zeroCrossings(rows, 5, after)
+  const driver = zeroCrossings(rows, 6, after)
+  const selected = rows.map(row => {
+    const r = [...row]
+    r[5] = row[eye.differentialColumn] * eye.polarity
+    return r
+  })
   const eyeCrossings = zeroCrossings(selected, 5, after)
   assert.ok(receiver.length >= 8 && driver.length >= 8, 'Actual transitions present')
   const delays = []
@@ -131,10 +147,12 @@ export function independentMetrics(rows, simulation, eye = { differentialColumn:
   }
   delays.sort((a, b) => a - b)
   assert.ok(delays.length >= 8)
-  const centers = [], phase = eyeCrossings[0].time
+  const centers = []
+  const phase = eyeCrossings[0].time
   for (let i = 0, t = phase + ui / 2; t < rows.at(-1)[0]; i++, t += ui)
     centers.push({ time: t, value: interpolated(selected, t, 5), high: i % 2 === 0 ? eyeCrossings[0].rising : !eyeCrossings[0].rising })
-  const high = centers.filter(s => s.high).map(s => s.value), low = centers.filter(s => !s.high).map(s => s.value)
+  const high = centers.filter(s => s.high).map(s => s.value)
+  const low = centers.filter(s => !s.high).map(s => s.value)
   const intervals = eyeCrossings.slice(1).map((c, i) => c.time - eyeCrossings[i].time)
   const steady = selected.filter(r => r[0] >= after).map(r => r[5])
   return {
@@ -163,7 +181,8 @@ export function independentlyCheckBoardGeometry(original, circuit) {
   const inventory = []
   for (const type of ['pcb_board', 'pcb_via', 'pcb_smtpad', 'pcb_plated_hole', 'pcb_hole', 'pcb_copper_pour', 'pcb_keepout']) {
     const shapes = cj => cj.filter(e => e.type === type).map(e => hash(JSON.stringify(physicalGeometry(e)))).sort()
-    const before = shapes(original), after = shapes(circuit)
+    const before = shapes(original)
+    const after = shapes(circuit)
     assert.ok(JSON.stringify(before) === JSON.stringify(after), `${type}: original ${before.length}, native ${after.length}; changed/omitted physical geometry detected (ID remapping and <1e-10mm rounding ignored)`)
     inventory.push({ type, original: before.length, native: after.length, physicalGeometryPreserved: true })
   }
@@ -172,9 +191,14 @@ export function independentlyCheckBoardGeometry(original, circuit) {
   const references = cj => {
     const ports = new Map(cj.filter(e => e.type === 'pcb_port').map(e => [e.pcb_port_id, e]))
     const pours = new Set(cj.filter(e => e.type === 'pcb_copper_pour').map(e => e.pcb_copper_pour_id))
-    let endpoints = 0, offsets = 0, pourReferences = 0
+    let endpoints = 0
+    let offsets = 0
+    let pourReferences = 0
     for (const trace of cj.filter(e => e.type === 'pcb_trace')) for (const point of trace.route) {
-      if (point.copper_pour_id) { pourReferences++; assert.ok(pours.has(point.copper_pour_id), 'No dangling copper-pour pointer') }
+      if (point.copper_pour_id) {
+        pourReferences++
+        assert.ok(pours.has(point.copper_pour_id), 'No dangling copper-pour pointer')
+      }
       for (const key of ['start_pcb_port_id', 'end_pcb_port_id']) if (point[key]) {
         endpoints++
         const port = ports.get(point[key])
@@ -184,7 +208,8 @@ export function independentlyCheckBoardGeometry(original, circuit) {
     }
     return { endpointReferences: endpoints, originalRouteEndpointsOffsetFromPadCenter: offsets, copperPourReferences: pourReferences }
   }
-  const originalReferences = references(original), nativeReferences = references(circuit)
+  const originalReferences = references(original)
+  const nativeReferences = references(circuit)
   assert.deepEqual(nativeReferences, originalReferences, 'Reference metadata preserves original draft, including inherited pad-center offsets')
   return { inventory, manualViasPreserved: manualVias(circuit), references: nativeReferences, coordinateComparisonResolutionMm: 1e-10 }
 }
@@ -216,7 +241,8 @@ export async function independentlyCheckMatrices(out, cell, modeling) {
   const raw = await readFile(join(stage, 'refinement/Zc.mat'), 'utf8')
   const marker = raw.match(/Impedance matrix for frequency\s*=\s*(\S+)\s+(\d+)\s+x\s+(\d+)\s*\n/)
   assert.ok(marker, 'Raw refined FastHenry matrix')
-  const frequency = Number(marker[1]), dimension = Number(marker[2])
+  const frequency = Number(marker[1])
+  const dimension = Number(marker[2])
   assert.equal(Number(marker[3]), dimension)
   assert.equal(dimension, cell.conductors.length, 'Raw solver conductor count agrees with generated geometry')
   assert.ok([2, 3, 4].includes(dimension), 'Backend contains one to three signals plus a return')
@@ -229,7 +255,8 @@ export async function independentlyCheckMatrices(out, cell, modeling) {
   const returnIndex = dimension - 1
   const loops = primitive => Array.from({ length: returnIndex }, (_, i) => Array.from({ length: returnIndex }, (_, j) =>
     primitive[i][j] - primitive[i][returnIndex] - primitive[returnIndex][j] + primitive[returnIndex][returnIndex]))
-  const R = symmetric(loops(primitiveR)), L = symmetric(loops(primitiveL))
+  const R = symmetric(loops(primitiveR))
+  const L = symmetric(loops(primitiveL))
 
   const capText = await readFile(join(stage, 'fastercap.stdout.log'), 'utf8')
   const capMarker = [...capText.matchAll(/Capacitance matrix is:\s*\nDimension\s+(\d+)\s+x\s+(\d+)\s*\n/g)].at(-1)
@@ -273,7 +300,8 @@ export async function independentlyCheckMatrices(out, cell, modeling) {
 }
 
 export async function auditRun(outputDir, { fixture = null, sourceRoot = null } = {}) {
-  const out = resolve(outputDir), receipt = await readJson(join(out, 'receipt.json'))
+  const out = resolve(outputDir)
+  const receipt = await readJson(join(out, 'receipt.json'))
   if (receipt.schemaVersion >= 3) {
     const {auditRun: auditGeneralRun} = await import('./verification/audit-general.mjs')
     return auditGeneralRun(receipt.project?.root ?? process.cwd(), out)
@@ -292,14 +320,17 @@ export async function auditRun(outputDir, { fixture = null, sourceRoot = null } 
   }
   const circuitBytes = await readFile(join(out, 'inputs/circuit.json'))
   assert.equal(hash(circuitBytes), receipt.sourceCircuitJsonSha256, 'Executed circuit bytes match receipt')
-  const circuit = JSON.parse(circuitBytes), modeling = await readJson(join(out, 'inputs/modeling.json'))
+  const circuit = JSON.parse(circuitBytes)
+  const modeling = await readJson(join(out, 'inputs/modeling.json'))
   const geometry = await readJson(join(out, 'geometry.json'))
   const originalBytes = await readFile(fixture ?? join(out, 'inputs', `original.circuit.json${modeling.circuit?.endsWith('.gz') ? '.gz' : ''}`))
-  const original = originalBytes[0] === 0x1f && originalBytes[1] === 0x8b ? gunzipSync(originalBytes) : originalBytes, originalCircuit = JSON.parse(original)
+  const original = originalBytes[0] === 0x1f && originalBytes[1] === 0x8b ? gunzipSync(originalBytes) : originalBytes
+  const originalCircuit = JSON.parse(original)
   assert.equal(hash(original), modeling.fixtureProvenance.originalJsonSha256, 'Pinned original board bytes')
   const boardGeometryAudit = independentlyCheckBoardGeometry(originalCircuit, circuit)
   const routedShapes = cj => cj.filter(e => e.type === 'pcb_trace').map(e => hash(JSON.stringify(physicalRoute(e.route)))).sort()
-  const originalShapes = routedShapes(originalCircuit), actualShapes = routedShapes(circuit)
+  const originalShapes = routedShapes(originalCircuit)
+  const actualShapes = routedShapes(circuit)
   assert.ok(JSON.stringify(actualShapes) === JSON.stringify(originalShapes), `Every saved PCB trace geometry must be preserved: original ${originalShapes.length}, native ${actualShapes.length}; rerouting or omission detected`)
   const routeAudit = geometry.mappings.map((mapping, index) => {
     const lane = modeling.lanes[index]
@@ -368,7 +399,8 @@ export async function auditRun(outputDir, { fixture = null, sourceRoot = null } 
   const endpointField = eye.endpoint === 'receiver' ? 'to' : 'from'
   const ids = geometry.mappings.map(m => m[endpointField])
   assert.deepEqual([eye.positiveSourcePortId, eye.negativeSourcePortId], eye.polarity === 1 ? ids : ids.toReversed(), 'Native eye resolves actual extracted endpoint ports')
-  const metrics = await readJson(join(out, 'metrics.json')), measured = independentMetrics(rows, modeling.simulation, eye)
+  const metrics = await readJson(join(out, 'metrics.json'))
+  const measured = independentMetrics(rows, modeling.simulation, eye)
   for (const [key, value] of Object.entries(measured)) {
     if (key === 'centerSamples') continue
     if (Array.isArray(value)) value.forEach((v, i) => close(v, metrics[key][i], `${key}[${i}]`))
@@ -376,12 +408,14 @@ export async function auditRun(outputDir, { fixture = null, sourceRoot = null } 
   }
   const folded = (await readFile(join(out, 'eye-data.csv'), 'utf8')).trim().split(/\r?\n/)
   assert.equal(folded.shift(), 'window,folded_time_s,differential_v')
-  const ui = eye.unitIntervalSeconds, expectedWindows = []
+  const ui = eye.unitIntervalSeconds
+  const expectedWindows = []
   for (let start = measured.eyePhaseSeconds - ui / 2; start + 2 * ui <= rows.at(-1)[0]; start += ui)
     if (start >= eye.startTimeSeconds) expectedWindows.push(start)
   assert.equal(folded.length, expectedWindows.length * 1200, 'Every complete measured eye window included')
   for (const [i, text] of folded.entries()) {
-    const [window, time, value] = text.split(',').map(Number), point = i % 1200
+    const [window, time, value] = text.split(',').map(Number)
+    const point = i % 1200
     assert.equal(window, Math.floor(i / 1200))
     close(time, 2 * ui * point / 1199, 'Folded time interpolation grid')
     close(value, interpolated(rows, expectedWindows[window] + time, eye.differentialColumn) * eye.polarity, 'Every eye voltage derived independently from waveform', 1e-8, 1e-9)
@@ -394,7 +428,8 @@ export async function auditRun(outputDir, { fixture = null, sourceRoot = null } 
 }
 
 export async function compareFreshRuns(aDir, bDir) {
-  const a = await readJson(join(aDir, 'receipt.json')), b = await readJson(join(bDir, 'receipt.json'))
+  const a = await readJson(join(aDir, 'receipt.json'))
+  const b = await readJson(join(bDir, 'receipt.json'))
   assert.notEqual(resolve(aDir), resolve(bDir))
   assert.deepEqual(a.sourceFiles,b.sourceFiles,'Both fresh runs execute identical package source/config bytes')
   if(a.schemaVersion===3) assert.deepEqual(a.converter.files,b.converter.files,'Both runs use identical compiled converter bytes')
@@ -405,7 +440,8 @@ export async function compareFreshRuns(aDir, bDir) {
   for (const path of ['native-ibis-assembly.json','project-provenance.json','eyediagram.json', 'eye-data.csv', 'eye.png', 'eye.svg', 'waveform.png', 'waveform.svg']) if (a.files[path]&&!paths.includes(path)) paths.push(path)
   const compared = []
   for (const path of paths) {
-    const ah = hash(await readFile(join(aDir, path))), bh = hash(await readFile(join(bDir, path)))
+    const ah = hash(await readFile(join(aDir, path)))
+    const bh = hash(await readFile(join(bDir, path)))
     assert.equal(ah, bh, `Fresh execution byte comparison: ${path}`)
     compared.push({ path, sha256: ah, byteIdentical: true })
   }

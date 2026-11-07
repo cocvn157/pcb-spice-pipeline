@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto'
 import { assertComparable, compareRuns, comparisonIdentity, comparisonPairs, stimulusActivity, waveformDifference,
   type ComparisonInput } from './legacy/comparison'
 
+/** A minimal two-lane comparison input: tx1 is the neighbor, tx0 drives the victim. Tests override pieces of it. */
 const fixture = (): ComparisonInput => {
   const references = { pullup: 'vdd', pulldown: 'gnd', powerClamp: 'vdd', groundClamp: 'gnd' }
   return {
@@ -34,7 +35,8 @@ const fixture = (): ComparisonInput => {
 }
 
 test('comparison permits only selected neighbor traffic changes', () => {
-  const quiet = fixture(), active = structuredClone(quiet)
+  const quiet = fixture()
+  const active = structuredClone(quiet)
   active.plan.stimuli[1].transmission_pattern.bits = '01'
   active.assembly[0].metadata.pins[1].stimulusHash = 'different-neighbor-schedule'
   assert.doesNotThrow(() => assertComparable([comparisonIdentity(quiet), comparisonIdentity(active)]))
@@ -51,7 +53,8 @@ test('comparison permits only selected neighbor traffic changes', () => {
     (input: ComparisonInput) => { input.assembly[0].definition.corner = 'minimum' },
     (input: ComparisonInput) => { input.assembly[0].metadata.pins[1].references.pullup = 'different-rail' },
   ]) {
-    const changed = structuredClone(active); mutate(changed)
+    const changed = structuredClone(active)
+    mutate(changed)
     assert.throws(() => assertComparable([comparisonIdentity(quiet), comparisonIdentity(changed)]), /comparison_fairness/)
   }
   active.plan.experiment.spice_options = { method: 'gear', abstol: 1e-12, reltol: 1e-5 }
@@ -68,7 +71,8 @@ test('comparison permits only selected neighbor traffic changes', () => {
 })
 
 test('comparison treats binary arrays and strings as identical declared traffic', () => {
-  const strings = fixture(), arrays = structuredClone(strings)
+  const strings = fixture()
+  const arrays = structuredClone(strings)
   for (const stimulus of arrays.plan.stimuli) stimulus.transmission_pattern.bits = [0, 1]
   for (const stimulus of strings.plan.stimuli) stimulus.transmission_pattern.bits = '01'
   assert.deepEqual(stimulusActivity(arrays.plan.stimuli[0], 0, 10), stimulusActivity(strings.plan.stimuli[0], 0, 10))
@@ -78,8 +82,10 @@ test('comparison treats binary arrays and strings as identical declared traffic'
 })
 
 test('quiet includes startup and pairing follows declared activity, not ordering or names', () => {
-  const quiet = fixture().plan.stimuli[1], switching = { ...quiet, transmission_pattern: { ...quiet.transmission_pattern, bits: '01' } }
-  const neighbor = (stimulus: typeof quiet) => ({ from: 'tx1', to: 'rx1',
+  const quiet = fixture().plan.stimuli[1]
+  const switching = { ...quiet, transmission_pattern: { ...quiet.transmission_pattern, bits: '01' } }
+  /** A tx1 neighbor entry with its activity over the whole run and over the 2-10 s gate. */
+  const neighbor = (stimulus: typeof quiet): { from: string; to: string; wholeRun: ReturnType<typeof stimulusActivity>; gate: ReturnType<typeof stimulusActivity> } => ({ from: 'tx1', to: 'rx1',
     wholeRun: stimulusActivity(stimulus, 0, 10), gate: stimulusActivity(stimulus, 2, 10) })
   const runs = [{ label: 'arbitrary active name', neighbors: [neighbor(switching)] },
     { label: 'arbitrary quiet name', neighbors: [neighbor(quiet)] }]
@@ -116,12 +122,15 @@ test('difference rejects empty, nonfinite, nonmonotonic and extrapolated samples
 test('saved-run comparison binds artifacts and computes pairs before shared rendering', async t => {
   const directory = await mkdtemp(join(tmpdir(), 'pcb-comparison-'))
   t.after(() => rm(directory, { recursive: true, force: true }))
-  const hash = (data: string) => createHash('sha256').update(data).digest('hex')
+  /** Hex SHA-256 of a string, as the run receipt records it. */
+  const hash = (data: string): string => createHash('sha256').update(data).digest('hex')
   const files: Record<string, string> = {}
-  const save = async (relative: string, value: unknown) => {
+  /** Writes a run artifact (JSON-encoding non-strings) and records its hash for the receipt. */
+  const save = async (relative: string, value: unknown): Promise<void> => {
     const text = typeof value === 'string' ? value : JSON.stringify(value)
     await mkdir(dirname(join(directory, relative)), { recursive: true })
-    await writeFile(join(directory, relative), text); files[relative] = hash(text)
+    await writeFile(join(directory, relative), text)
+    files[relative] = hash(text)
   }
   await save('inputs/circuit.json', [])
   await save('inputs/modeling.json', JSON.parse(await readFile(new URL('../fixtures/straight.modeling.json', import.meta.url), 'utf8')))
@@ -136,8 +145,10 @@ test('saved-run comparison binds artifacts and computes pairs before shared rend
   await save('tool-evidence.json', Object.fromEntries(Object.entries(binarySha256).map(([name, sha256]) => [name, { sha256 }])))
   const experiments = []
   for (const [name, bits, values] of [['quiet', '0', '0'], ['switching', '01', '.2']]) {
-    const folder = `experiments/${name}`, waveform = `time_s,probe_v\n0,${values}\n5,${values}\n10,${values}\n`
-    const plan = structuredClone(input.plan); plan.stimuli[1].transmission_pattern.bits = bits
+    const folder = `experiments/${name}`
+    const waveform = `time_s,probe_v\n0,${values}\n5,${values}\n10,${values}\n`
+    const plan = structuredClone(input.plan)
+    plan.stimuli[1].transmission_pattern.bits = bits
     const eye = { ...input.eye, sourceSha256: hash(waveform) }
     await save(`${folder}/waveform.csv`, waveform)
     await save(`${folder}/experiment.json`, plan)

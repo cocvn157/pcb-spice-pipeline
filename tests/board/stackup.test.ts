@@ -5,6 +5,7 @@ import type { CircuitJson } from 'circuit-json'
 import { stackupFromCircuitJson, geometryFromCircuitJson } from '../../src/board'
 import { fastHenryDeck } from '../../src/extraction'
 
+/** A 4-layer board with the JLC04161H-3313 stackup record, built fresh for each test. */
 const fixture = (): CircuitJson => [
   { type: 'pcb_board', pcb_board_id: 'pcb_board_0', num_layers: 4, width: 10, height: 10, center: { x: 0, y: 0 }, thickness: 1.6 },
   JSON.parse(readFileSync(new URL('../fixtures/jlc-stackup.json', import.meta.url), 'utf8')),
@@ -33,7 +34,8 @@ test('missing Circuit JSON stackup fails early with the board template instructi
 })
 
 test('conductivity defaults to annealed copper, preserves explicit per-layer values and reaches the solver', () => {
-  const circuit = fixture(), stackup = circuit[1]
+  const circuit = fixture()
+  const stackup = circuit[1]
   if (stackup.type !== 'pcb_stackup' || stackup.layers[0].layer_type !== 'copper') throw Error('fixture')
   stackup.layers[0].electrical_conductivity_s_per_m = 3e7
   assert.deepEqual(stackupFromCircuitJson(circuit).copperLayers.map(layer => layer.conductivitySm), [5.8e7, 5.8e7, 5.8e7, 3e7])
@@ -46,7 +48,8 @@ test('conductivity defaults to annealed copper, preserves explicit per-layer val
 })
 
 test('stackup must reference the actual board and match its copper count', () => {
-  const circuit = fixture(), stackup = circuit[1]
+  const circuit = fixture()
+  const stackup = circuit[1]
   if (stackup.type !== 'pcb_stackup') throw Error('fixture')
   stackup.pcb_board_id = 'missing'
   assert.throws(() => stackupFromCircuitJson(circuit), /referenced by missing/)

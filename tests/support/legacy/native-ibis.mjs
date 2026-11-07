@@ -2,14 +2,19 @@ import {fail} from '../fail.mjs'
 export function useNativeIbis(circuitJson,geometry,modeling,independent) {
   const errors=circuitJson.filter(e=>e.type==='source_invalid_component_property_error'&&e.property_name==='ibisModel')
   if(errors.length) fail('native_ibis',errors.map(e=>e.message).join('; '))
-  const evidence={},result={}
+  const evidence={}
+  const result={}
   for(const [role,endpoint] of [['driver','from'],['receiver','to']]) {
-    const ids=geometry.mappings.map(m=>m[endpoint]),ports=ids.map(id=>circuitJson.find(e=>e.type==='source_port'&&e.source_port_id===id))
+    const ids=geometry.mappings.map(m=>m[endpoint])
+    const ports=ids.map(id=>circuitJson.find(e=>e.type==='source_port'&&e.source_port_id===id))
     const componentIds=[...new Set(ports.map(p=>p.source_component_id))]
     if(componentIds.length!==1) fail('native_ibis',`${role}: both lanes must belong to one selected chip`)
-    const componentId=componentIds[0],models=circuitJson.filter(e=>e.type==='simulation_spice_subcircuit'&&e.source_component_id===componentId)
+    const componentId=componentIds[0]
+    const models=circuitJson.filter(e=>e.type==='simulation_spice_subcircuit'&&e.source_component_id===componentId)
     if(models.length!==1) fail('native_ibis',`${role}: expected one native chip.ibisModel subcircuit, got ${models.length}; use native ibismodel declarations for new TSX entries`)
-    const native=models[0],expected=independent[role],mapping=native.spice_pin_to_source_port_map
+    const native=models[0]
+    const expected=independent[role]
+    const mapping=native.spice_pin_to_source_port_map
     if(native.subcircuit_source!==expected.source) fail('native_ibis',`${role}: native emitted source differs from independent conversion of hash-locked original bytes`)
     if(Object.keys(mapping).length!==Object.keys(expected.spicePinMapping).length) fail('native_ibis',`${role}: terminal map dimension differs`)
     const resolved={}

@@ -1,4 +1,5 @@
 import { Circuit, analog } from "@tscircuit/core"
+import type { JSX } from "react"
 import { rs485Pads } from "./models"
 import { BenchSupply, RoutedTrace, Soic8Pads } from "./pcb"
 import construction from "./board-construction.json"
@@ -8,7 +9,7 @@ const pins = { pin1: "R", pin2: "RE_N", pin3: "DE", pin4: "D", pin5: "GND", pin6
 const bits = "0011101001010110"
 
 /** Designed routed RS-485 pad/channel experiment; no receiver/core logic model. */
-function Board() {
+function Board(): JSX.Element {
   return <board width={construction.widthMm} height={construction.heightMm}
     thickness={construction.thicknessMm} layers={2} routingDisabled schematicDisabled>
     <chip name="TX" manufacturerPartNumber="SN65HVD72D" pcbX={-15} pcbY={0}

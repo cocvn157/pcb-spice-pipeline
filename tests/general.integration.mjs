@@ -8,15 +8,20 @@ import {createNativeSolver,loadIbisSources,writePipelineOutput} from '../dist/no
 import {channelSpice} from '../src/extraction/index.js'
 import {inMemoryInput} from './fixtures/in-memory.mjs'
 
-const root=fileURLToPath(new URL('../',import.meta.url)),output=join(root,'runs','native-library-regression')
+const root=fileURLToPath(new URL('../',import.meta.url))
+const output=join(root,'runs','native-library-regression')
 const solver=createNativeSolver({tools:{fasthenry:process.env.PCB_SPICE_FASTHENRY??'fasthenry',
   fastercap:process.env.PCB_SPICE_FASTERCAP??'FasterCap',ngspice:process.env.PCB_SPICE_NGSPICE??'ngspice'}})
 
 test('native three-signal channel obeys the complete R + j*w*L impedance matrix and Maxwell C',async()=>{
   const dir=join(output,'three-signal-matrix')
   await mkdir(dir,{recursive:true})
-  const R=[[2,.3,.4],[.3,3,.5],[.4,.5,4]],L=[[4e-9,1e-9,.8e-9],[1e-9,5e-9,1.2e-9],[.8e-9,1.2e-9,6e-9]],C=[[5e-12,-1e-12,-.5e-12],[-1e-12,6e-12,-.8e-12],[-.5e-12,-.8e-12,7e-12]]
-  const currents=[.001,.002,.004],voltage=[1,2,3],frequency=1e8
+  const R=[[2,.3,.4],[.3,3,.5],[.4,.5,4]]
+  const L=[[4e-9,1e-9,.8e-9],[1e-9,5e-9,1.2e-9],[.8e-9,1.2e-9,6e-9]]
+  const C=[[5e-12,-1e-12,-.5e-12],[-1e-12,6e-12,-.8e-12],[-.5e-12,-.8e-12,7e-12]]
+  const currents=[.001,.002,.004]
+  const voltage=[1,2,3]
+  const frequency=1e8
   // Independent AC columns: grounded outputs reveal series Z; open outputs reveal shunt C.
   const deck=['Matrix regression',channelSpice([{R,L,C}],1)]
   for(let i=0;i<3;i++) deck.push(`IR${i} 0 in${i} AC ${currents[i]}`,`VC${i} c${i} 0 AC ${voltage[i]}`)
@@ -27,12 +32,19 @@ test('native three-signal channel obeys the complete R + j*w*L impedance matrix 
   const values=solved.files['result.dat'].trim().split(/\r?\n/)[1].trim().split(/\s+/).map(Number)
   const omega=2*Math.PI*frequency
   // Independently solve the complex pi-network: (Z^-1 + j*w*C/2)^-1 * I.
-  const complex=(real,imag=0)=>[real,imag],add=(a,b)=>[a[0]+b[0],a[1]+b[1]],mul=(a,b)=>[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]],div=(a,b)=>mul(a,[b[0]/(b[0]**2+b[1]**2),-b[1]/(b[0]**2+b[1]**2)])
+  const complex=(real,imag=0)=>[real,imag]
+  const add=(a,b)=>[a[0]+b[0],a[1]+b[1]]
+  const mul=(a,b)=>[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]]
+  const div=(a,b)=>mul(a,[b[0]/(b[0]**2+b[1]**2),-b[1]/(b[0]**2+b[1]**2)])
   const solve=(matrix,rhs)=>{
     const a=matrix.map((row,i)=>[...row.map(v=>[...v]),[...rhs[i]]])
     for(let i=0;i<3;i++) {
-      const pivot=a[i][i];a[i]=a[i].map(v=>div(v,pivot))
-      for(let j=0;j<3;j++) if(j!==i) {const factor=a[j][i];a[j]=a[j].map((v,k)=>add(v,mul(complex(-1),mul(factor,a[i][k]))))}
+      const pivot=a[i][i]
+      a[i]=a[i].map(v=>div(v,pivot))
+      for(let j=0;j<3;j++) if(j!==i) {
+        const factor=a[j][i]
+        a[j]=a[j].map((v,k)=>add(v,mul(complex(-1),mul(factor,a[i][k]))))
+      }
     }
     return a.map(row=>row[3])
   }
@@ -50,8 +62,12 @@ test('native three-signal channel obeys the complete R + j*w*L impedance matrix 
 })
 
 test('full in-memory pipeline executes real extraction, refinement and ngspice before explicit output',async()=>{
-  const input=inMemoryInput(),calls=[]
-  const result=await runPipeline({...input,runSolver:async request=>{calls.push(request.solver);return solver(request)}})
+  const input=inMemoryInput()
+  const calls=[]
+  const result=await runPipeline({...input,runSolver:async request=>{
+    calls.push(request.solver)
+    return solver(request)
+  }})
   assert.deepEqual(calls,['fasthenry','fasthenry','fastercap','ngspice'])
   assert.equal(result.matrices.length,1)
   const matrix=result.matrices[0]

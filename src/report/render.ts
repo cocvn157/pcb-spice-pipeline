@@ -24,8 +24,13 @@ export function generateReport(result: PipelineResult): FileMap {
     }))})
 }
 
-export function generateReportData(data: ReportData, title = 'Signal integrity report'): FileMap {
-  const files = reportFiles(data), sections = reportSections(data, files)
+/**
+ * Renders data already in report shape as results.html plus CSVs; generateReport and the comparison tests call it.
+ * Pure and deterministic; the HTML embeds the data and the viewer script, so it works offline.
+ */
+export function generateReportData(data: ReportData, title: string = 'Signal integrity report'): FileMap {
+  const files = reportFiles(data)
+  const sections = reportSections(data, files)
   const output: FileMap=Object.fromEntries(files.map(file=>[file.path,file.content]))
   const { context, ...viewerData } = data
   const payload = JSON.stringify({ ...viewerData, runs: data.runs.map(({ test, ...run }) => ({ ...run,

@@ -1,6 +1,6 @@
 import type { Board, Group } from '@tscircuit/core'
 import { createElement, Fragment, useLayoutEffect, useRef } from 'react'
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 
 import type { BoardProps } from '@tscircuit/props'
 
@@ -12,6 +12,7 @@ export const importedBoardRecords = Symbol.for('signal-integrity-pipeline.import
 export const importedBoardDeclarations = Symbol.for('signal-integrity-pipeline.imported-board-declarations.v2')
 export type ImportedBoardInstance = Board & { [importedBoardRecords]?: SavedRecord[]; [importedBoardDeclarations]?: Group }
 
+/** Checks that every entry is a Circuit JSON record with a string type, so later code can read `type` safely. */
 export function savedRecords(circuitJson: readonly unknown[]): SavedRecord[] {
   return circuitJson.map(record => {
     if (!record || typeof record !== 'object' || !('type' in record) || typeof record.type !== 'string')
@@ -31,7 +32,7 @@ export interface ImportedBoardProps extends Pick<BoardProps, 'fabricatorPreset' 
  * not supported in tsci projects; declare simulations in the board's own TSX.
  * @internal
  */
-export function ImportedBoard({ circuitJson, children, fabricatorPreset, material }: ImportedBoardProps) {
+export function ImportedBoard({ circuitJson, children, fabricatorPreset, material }: ImportedBoardProps): ReactElement {
   const boardRef = useRef<ImportedBoardInstance | null>(null)
   const declarationsRef = useRef<Group | null>(null)
   const records = savedRecords(circuitJson)
@@ -72,7 +73,9 @@ export function ImportedBoard({ circuitJson, children, fabricatorPreset, materia
     // The saved-board importer requires circuitJson without JSX children. Move
     // the native declaration group into the board before core render phases.
     instance.add(group)
-    return () => { instance.remove(group) }
+    return () => {
+      instance.remove(group)
+    }
   }, [circuitJson, children])
   return createElement(Fragment, null,
     createElement('board', { ref: boardRef, fabricatorPreset, material: material ?? board.material, width: board.width, height: board.height, thickness: board.thickness,

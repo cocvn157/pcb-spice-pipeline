@@ -12,7 +12,8 @@ const declared=input=>generalDeclarations(input.circuitJson,geometryFromCircuitJ
 const admit=(input,modeling=input.modeling,ibisSources=input.ibisSources)=>admitBuffers(declared(input).models,ibisSources,modeling,rootScope('buffers'))
 
 test('pipeline verifies optional expected IBIS asset hashes before invoking any solver',()=>{
-  const input=inMemoryInput(),path='models/test.ibs'
+  const input=inMemoryInput()
+  const path='models/test.ibs'
   const locked={...input.modeling,ibisModelAssetSha256:{[path]:sha256(input.ibisSources[path]).toUpperCase()}}
   assert.doesNotThrow(()=>admit(input,locked))
   assert.doesNotThrow(()=>admit(input))
@@ -25,14 +26,17 @@ test('pipeline verifies optional expected IBIS asset hashes before invoking any 
 })
 
 test('admission records exact source bytes and evidence; compilation pins each run to them',()=>{
-  const input=inMemoryInput(),declarations=declared(input),admitted=admitBuffers(declarations.models,input.ibisSources,input.modeling,rootScope('buffers'))
+  const input=inMemoryInput()
+  const declarations=declared(input)
+  const admitted=admitBuffers(declarations.models,input.ibisSources,input.modeling,rootScope('buffers'))
   assert.doesNotThrow(()=>assertConverter(),'converter_version')
   assert.deepEqual(admitted.artifacts.map(a=>a.path),['inputs/ibis/model-0.ibs','inputs/ibis/model-1.ibs','vendor-sources.json'])
   assert.ok(admitted.artifacts.every(a=>a.owner==='buffers'))
   const evidence=JSON.parse(admitted.artifacts.at(-1).body)
   assert.deepEqual(evidence.map(e=>e.sourceSha256),[sha256(input.ibisSources['models/test.ibs']),sha256(input.ibisSources['models/test.ibs'])])
   const compiled=compileBuffers(admitted.value,declarations.plans,modelRunDefinition)
-  assert.equal(compiled.length,1);assert.equal(compiled[0].length,2)
+  assert.equal(compiled.length,1)
+  assert.equal(compiled[0].length,2)
   for(const model of compiled[0]) assert.deepEqual(model.input.definition.source,{file:model.sourceEvidence.ibsFile,sha256:model.sourceEvidence.sourceSha256})
   const assembly=ibisAssembly(compiled[0],rootScope('buffers').child('experiments','run'))
   assert.deepEqual(assembly.artifacts.map(a=>a.path),['experiments/run/native-ibis-assembly.json'])

@@ -8,15 +8,23 @@ import { ringArea as area, polygonContains as contains } from './polygon'
 import type { CopperPoint as Point, CopperXYZ as XYZ, CopperPolygon as Polygon, CopperSegment as Segment, CopperPath as Path,
   Geometry, LaneMapping, ResolvedModeling, RoutedCopper } from './types'
 
-const finite = (value: number) => Number.isFinite(value)
-const distance = (a: XYZ, b: XYZ) => Math.hypot(...a.map((v, i) => v - b[i]))
-const layer = (m: ResolvedModeling, name: string) => {
+/** True for finite numbers; used as an `every` predicate on coordinates. */
+const finite = (value: number): boolean => Number.isFinite(value)
+/** Straight-line distance between two 3D points in mm. */
+const distance = (a: XYZ, b: XYZ): number => Math.hypot(...a.map((v, i) => v - b[i]))
+/** Looks up the stackup copper layer named `name`, failing 'stackup' when it is missing. */
+const layer = (m: ResolvedModeling, name: string): ResolvedModeling['stackup'][number] => {
   const found = m.stackup.find(l => l.name === name)
   if (!found) fail('stackup', `No copper z range for ${name}`)
   return found
 }
-const z = (m: ResolvedModeling, name: string) => { const l = layer(m, name); return (l.zMinMm + l.zMaxMm) / 2 }
+/** Mid-height (z) of the named copper layer in mm, where path segments run. */
+const z = (m: ResolvedModeling, name: string): number => {
+  const l = layer(m, name)
+  return (l.zMinMm + l.zMaxMm) / 2
+}
 
+/** Converts a validated wire/via route into connected 3D copper segments, rejecting gaps and tapered widths. */
 function routePath(route: LaneMapping['originalRoute'], m: ResolvedModeling): Path {
   if (!Array.isArray(route) || route.length < 2 || route[0].route_type !== 'wire') fail('route_geometry', 'Copper routes must start with a wire at a physical port')
   for (const point of route) {
@@ -29,16 +37,20 @@ function routePath(route: LaneMapping['originalRoute'], m: ResolvedModeling): Pa
   }
   const segments: Segment[] = []
   for (let i = 1; i < route.length; i++) {
-    const a = route[i - 1], b = route[i]
+    const a = route[i - 1]
+    const b = route[i]
     if (b.route_type === 'via') {
       if (a.route_type !== 'wire' || Math.hypot(b.x - a.x, b.y - a.y) > 1e-5 || a.layer !== b.from_layer || b.from_layer === b.to_layer) fail('via_geometry', 'Via must follow a co-located wire and continue its layer')
-      const hole = b.hole_diameter, plating = m.viaPlatingMm!, width = m.viaEquivalentWidthMm!
+      const hole = b.hole_diameter
+      const plating = m.viaPlatingMm!
+      const width = m.viaEquivalentWidthMm!
       if (![hole, plating, width].every(value => typeof value === 'number' && finite(value) && value > 0)) fail('via_geometry', 'Positive finite via hole, plating and equivalent width required')
       if (!m.omitThroughViaStubs) fail('via_stub', 'Select omitThroughViaStubs for routed vias')
       segments.push({ a: [b.x, b.y, z(m, b.from_layer)], b: [b.x, b.y, z(m, b.to_layer)], widthMm: width,
         thicknessMm: Math.PI * ((hole! / 2 + plating) ** 2 - (hole! / 2) ** 2) / width })
     } else {
-      const name = a.route_type === 'via' ? a.to_layer : a.layer, l = layer(m, name)
+      const name = a.route_type === 'via' ? a.to_layer : a.layer
+      const l = layer(m, name)
       if (b.layer !== name || !Number.isFinite(b.width) || b.width <= 0) fail('route_geometry', 'Continuous layer and positive width required')
       if (Math.hypot(b.x - a.x, b.y - a.y) > 1e-10) segments.push({ a: [a.x, a.y, z(m, name)], b: [b.x, b.y, z(m, name)], widthMm: b.width, thicknessMm: l.zMaxMm - l.zMinMm, conductivitySm: l.conductivitySm })
     }
@@ -50,29 +62,36 @@ function routePath(route: LaneMapping['originalRoute'], m: ResolvedModeling): Pa
 
 type Via = Extract<CircuitJson[number], { type: 'pcb_via' }>
 
-// A full barrel disk inside the pour avoids claiming a connection across a
-// cutout or an edge that only intersects the drilled void.
+/** True when the full barrel disk lies inside the pour. This avoids claiming a connection across a
+ * cutout or an edge that only intersects the drilled void. */
 function barrelInside(p: Point, radius: number, polygon: Polygon): boolean {
   if (!contains(p, polygon)) return false
   return polygon.every(ring => ring.every((a, i) => {
-    const b = ring[(i + 1) % ring.length], dx = b[0] - a[0], dy = b[1] - a[1]
+    const b = ring[(i + 1) % ring.length]
+    const dx = b[0] - a[0]
+    const dy = b[1] - a[1]
     const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy)))
     return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy) > radius
   }))
 }
 
+/** True when the via's drilled layer span covers both `from` and `to`, so it can join those layers. */
 function viaSpans(via: Via, from: string, to: string, m: ResolvedModeling): boolean {
   const indices = via.layers.map(name => m.stackup.findIndex(l => l.name === name))
-  const start = m.stackup.findIndex(l => l.name === from), end = m.stackup.findIndex(l => l.name === to)
+  const start = m.stackup.findIndex(l => l.name === from)
+  const end = m.stackup.findIndex(l => l.name === to)
   if (indices.length < 2 || indices.some(i => i < 0) || start < 0 || end < 0 || start === end) return false
-  const lo = Math.min(...indices), hi = Math.max(...indices)
+  const lo = Math.min(...indices)
+  const hi = Math.max(...indices)
   if (via.from_layer !== undefined || via.to_layer !== undefined) {
-    const a = m.stackup.findIndex(l => l.name === via.from_layer), b = m.stackup.findIndex(l => l.name === via.to_layer)
+    const a = m.stackup.findIndex(l => l.name === via.from_layer)
+    const b = m.stackup.findIndex(l => l.name === via.to_layer)
     if (Math.min(a, b) !== lo || Math.max(a, b) !== hi) return false
   }
   return start >= lo && start <= hi && end >= lo && end <= hi
 }
 
+/** Checks a reference via has a valid plated barrel and returns the barrel's outer radius in mm. */
 function validateReferenceVia(via: Via, m: ResolvedModeling, portId: string): number {
   const plating = m.viaPlatingMm!
   if (![via.x, via.y, via.outer_diameter, via.hole_diameter, plating].every(finite) || via.hole_diameter <= 0 || plating <= 0 || via.outer_diameter <= via.hole_diameter || via.hole_diameter + 2 * plating > via.outer_diameter + 1e-10)
@@ -84,19 +103,22 @@ function validateReferenceVia(via: Via, m: ResolvedModeling, portId: string): nu
 function groundConnection(circuit: CircuitJson, m: ResolvedModeling, portId: string, netIds: Set<string>, pours: RoutedCopper['pours']): Path {
   const ports = circuit.filter(e => e.type === 'pcb_port').filter(e => e.source_port_id === portId)
   if (ports.length !== 1 || ports[0].layers.length !== 1) fail('ground_connection', `${portId}: one PCB reference port/layer required`)
-  const port = ports[0], start: XYZ = [port.x, port.y, z(m, port.layers[0])]
+  const port = ports[0]
+  const start: XYZ = [port.x, port.y, z(m, port.layers[0])]
   if (![port.x, port.y].every(finite)) fail('ground_connection', `${portId}: finite physical reference coordinates required`)
   if (pours.some(p => p.layer === port.layers[0] && contains([port.x, port.y], p.polygon))) {
     const pads=circuit.filter(e=>e.type==='pcb_smtpad').filter(e=>e.pcb_port_id===port.pcb_port_id)
     if(pads.length!==1) fail('ground_connection',`${portId}: reference contact needs one physical copper pad`)
-    const pad=pads[0], radius=pad.shape==='circle'?pad.radius:Math.min(Number(Reflect.get(pad,'width')),Number(Reflect.get(pad,'height')))/2
+    const pad=pads[0]
+    const radius=pad.shape==='circle'?pad.radius:Math.min(Number(Reflect.get(pad,'width')),Number(Reflect.get(pad,'height')))/2
     if(!Number.isFinite(radius)||radius<=0) fail('ground_connection',`${portId}: reference pad requires a finite contact area`)
     return { segments: [], terminals: [start, start], contactRadiusMm:radius }
   }
   // A directly connected native via may be associated through its source trace,
   // not source_net_id. Require both that association and physical pad contact.
   const pads = circuit.filter(e => e.type === 'pcb_smtpad').filter(e => e.pcb_port_id === port.pcb_port_id && e.layer === port.layers[0])
-  const connected = connectedSourceIds(circuit, portId), subcircuits = subcircuitTree(circuit)
+  const connected = connectedSourceIds(circuit, portId)
+  const subcircuits = subcircuitTree(circuit)
   const directVias = circuit.filter(e => e.type === 'pcb_via').filter(via => {
     // Board-level vias commonly sit in pads of parts inside a nested subcircuit.
     if (!subcircuits.within(port.subcircuit_id, via.subcircuit_id) || (via.source_net_id && !netIds.has(via.source_net_id))) return false
@@ -112,7 +134,8 @@ function groundConnection(circuit: CircuitJson, m: ResolvedModeling, portId: str
   }))
   if (directVias.length) {
     if (pads.length !== 1 || directVias.length !== 1) fail('ground_connection', `${portId}: ambiguous reference pad/via contact`)
-    const via = directVias[0], barrelRadius = validateReferenceVia(via, m, portId)
+    const via = directVias[0]
+    const barrelRadius = validateReferenceVia(via, m, portId)
     const targets = pours.filter(p => viaSpans(via, port.layers[0], p.layer, m) && barrelInside([via.x, via.y], barrelRadius, p.polygon))
     if (targets.length !== 1) fail('ground_connection', `${portId}: reference via must connect unambiguously to actual ground copper`)
     const pad = pads[0]
@@ -155,8 +178,10 @@ function groundConnection(circuit: CircuitJson, m: ResolvedModeling, portId: str
   return {...path,contactRadiusMm}
 }
 
+/** Builds routed-copper geometry: the ground net's pours, signal paths and both reference leads, unmeshed in mm. */
 export function routedCopperGeometry(circuit: CircuitJson, m: ResolvedModeling, mappings: LaneMapping[]): Geometry {
-  const reference = selectPort(circuit, m.channelReference).source_port_id, connected = connectedSourceIds(circuit, reference)
+  const reference = selectPort(circuit, m.channelReference).source_port_id
+  const connected = connectedSourceIds(circuit, reference)
   const groundNets = circuit.filter(e => e.type === 'source_net').filter(e => e.is_ground && connected.has(e.source_net_id))
   // Net records are scoped per subcircuit: one physical ground spanning several
   // subcircuits is several same-named records joined by traces. Name it after

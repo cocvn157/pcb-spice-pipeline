@@ -30,7 +30,8 @@ export async function auditMatrices(out, cell, modeling) {
   const raw = await readFile(join(stage, 'refinement/Zc.mat'), 'utf8')
   const marker = raw.match(/Impedance matrix for frequency\s*=\s*(\S+)\s+(\d+)\s+x\s+(\d+)\s*\n/)
   assert.ok(marker, 'Raw refined FastHenry matrix')
-  const frequency = Number(marker[1]), dimension = Number(marker[2])
+  const frequency = Number(marker[1])
+  const dimension = Number(marker[2])
   assert.equal(Number(marker[3]), dimension)
   assert.equal(dimension, cell.conductors.length, 'Raw solver conductor count agrees with generated geometry')
   assert.ok([2, 3, 4].includes(dimension), 'Backend contains one to three signals plus a return')
@@ -43,7 +44,8 @@ export async function auditMatrices(out, cell, modeling) {
   const returnIndex = dimension - 1
   const loops = primitive => Array.from({ length: returnIndex }, (_, i) => Array.from({ length: returnIndex }, (_, j) =>
     primitive[i][j] - primitive[i][returnIndex] - primitive[returnIndex][j] + primitive[returnIndex][returnIndex]))
-  const R = symmetric(loops(primitiveR)), L = symmetric(loops(primitiveL))
+  const R = symmetric(loops(primitiveR))
+  const L = symmetric(loops(primitiveL))
 
   const capText = await readFile(join(stage, 'fastercap.stdout.log'), 'utf8')
   const capMarker = [...capText.matchAll(/Capacitance matrix is:\s*\nDimension\s+(\d+)\s+x\s+(\d+)\s*\n/g)].at(-1)

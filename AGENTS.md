@@ -21,7 +21,18 @@ This is the only agent rules file. Do not add CLAUDE.md, GEMINI.md, .cursorrules
 
 ## Code
 
-- `pnpm check:modules && pnpm typecheck && pnpm test` must pass before a PR is ready.
+- `pnpm lint && pnpm check:modules && pnpm typecheck && pnpm test` must pass before a PR is ready.
 - Relative imports have no extension: `from './stages'`, and `from '../board'` for another module (enforced by `tests/tooling/imports.test.ts`). The build adds `.js` back in `dist/`.
 - Module rules, verification and migration notes: `docs/ARCHITECTURE.md`.
 - Output must stay byte-identical unless the PR says otherwise: `tests/compat/` pins exports, error codes, artifact paths and hashes.
+
+## Lint (`pnpm lint`, config in `eslint.config.mjs`, custom rules in `tools/eslint/rules.mjs`)
+
+| Rule | What it means |
+|---|---|
+| One variable per declaration | `const a = 1, b = 2` is not allowed. Write each on its own line. |
+| One statement per line | No `const a = 1; const b = 2` on one line. |
+| Every named function has JSDoc and a typed signature | Function declarations, methods and `const f = () => …` need a `/** … */` comment, a type on every parameter and a return type. Inline callbacks like `xs.map(x => x * 2)` are exempt. |
+| No enums | Use a string-literal union (`type Mode = 'a' \| 'b'`) or an `as const` object. |
+| TypeScript files over 500 lines warn | Split the file. If it is important to keep it whole, add `/* eslint-disable local/max-file-lines -- <reason> */` at the top. |
+| One test file per source file | `tests/<module>/<name>.test.ts` tests `src/<module>/<name>.ts` (or `<name>/index.ts`). Many tests per file are fine. `tests/compat`, `tests/tooling` and `tests/support` test the package as a whole and are exempt. |

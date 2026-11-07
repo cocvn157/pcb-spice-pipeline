@@ -12,16 +12,17 @@ export type {
   SimulationDigitalStimulus,
 } from 'circuit-json'
 
-// Saved boards retain a few older physical serialization forms. Validate their
-// equivalent official schemas without changing the original geometry values.
-const compatible = (schema: z.ZodTypeAny, normalize: (record: Record<string, unknown>) => Record<string, unknown>) =>
+/** Saved boards retain a few older physical serialization forms. Validate their
+ * equivalent official schemas without changing the original geometry values. */
+const compatible = (schema: z.ZodTypeAny, normalize: (record: Record<string, unknown>) => Record<string, unknown>): z.ZodTypeAny =>
   z.preprocess(value => {
     let normalized = value
     if (value && typeof value === 'object') normalized = normalize({...value})
     return [value, normalized]
   }, z.tuple([z.unknown(), schema])).transform(([original]) => original)
 
-const numericDisplayOffsets = (record: Record<string, unknown>) => {
+/** Rewrites numeric display offsets to the `<n>mm` strings circuit-json expects (on the validation copy only). */
+const numericDisplayOffsets = (record: Record<string, unknown>): Record<string, unknown> => {
   for (const key of ['display_offset_x','display_offset_y']) {
     const value = record[key]
     if (typeof value === 'number' && Number.isFinite(value)) record[key] = `${value}mm`
@@ -53,11 +54,13 @@ const physicalCompatibility: Record<string, z.ZodTypeAny> = {
     return record
   }),
 }
+/** Picks the zod schema for one record by its type (source components by ftype), preferring the compatibility schemas. */
 export function recordSchema(record: { type: string; ftype?: string }): z.ZodTypeAny | undefined {
   let schemaName = record.type
   if (record.type === 'source_component') schemaName = `source_${record.ftype}`
   return physicalCompatibility[record.type] ?? Reflect.get(base, schemaName)
 }
+/** Parses one Circuit JSON record with its registered schema, throwing a plain Error for missing or unknown types. */
 export function parseRecord(record: unknown): CircuitJson[number] {
   if (!record || typeof record !== 'object' || !('type' in record) || typeof record.type !== 'string') throw new Error('Circuit record requires a type')
   const schema = recordSchema(record as { type: string })
@@ -65,17 +68,19 @@ export function parseRecord(record: unknown): CircuitJson[number] {
   return schema.parse(record)
 }
 
-// Select the registered record schema directly, avoiding a union diagnostic
-// containing hundreds of unrelated alternatives. Validation never edits input.
+/** Select the registered record schema directly, avoiding a union diagnostic
+ * containing hundreds of unrelated alternatives. Validation never edits input. */
 export function validateCircuitRecords(records: unknown): void {
   if(!Array.isArray(records)) fail('circuit_schema','Expected a Circuit JSON record array')
   for(const record of records as Array<Record<string, unknown> | null | undefined>) {
-    const type=record?.type,id=record?.[`${type}_id`]??record?.name??'(unnamed)'
+    const type=record?.type
+    const id=record?.[`${type}_id`]??record?.name??'(unnamed)'
     const schema: Partial<z.ZodTypeAny> | undefined=typeof type==='string'?recordSchema(record as { type: string; ftype?: string }):undefined
     if(!schema?.safeParse) fail('circuit_schema',`${type??'(missing type)'} ${id}: no registered record schema`)
     const parsed=schema.safeParse(record)
     if(!parsed.success) {
-      const issue=parsed.error.issues[0],path=issue.path?.join('.')
+      const issue=parsed.error.issues[0]
+      const path=issue.path?.join('.')
       fail('circuit_schema',`${type} ${id}: ${path?path+': ':''}${issue.message}`)
     }
   }

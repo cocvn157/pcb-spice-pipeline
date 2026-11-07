@@ -23,9 +23,14 @@ export function resolveRouteVias(circuit: CircuitJson, trace: PcbTrace): RoutedP
   })
 }
 
+/** Finds exactly one source port by id or by component name plus pin, failing 'pin_mapping' when it is missing or ambiguous. */
 export function selectPort(cj: CircuitJson,s: PortSelector | undefined): SourcePort {
   if(!s) fail('pin_mapping','Explicit physical source port selector required')
-  if(s.sourcePortId) {const ports=cj.filter((e): e is SourcePort=>e.type==='source_port'&&e.source_port_id===s.sourcePortId);if(ports.length!==1) fail('pin_mapping',`${s.sourcePortId}: expected one source port, got ${ports.length}`);return ports[0]}
+  if(s.sourcePortId) {
+    const ports=cj.filter((e): e is SourcePort=>e.type==='source_port'&&e.source_port_id===s.sourcePortId)
+    if(ports.length!==1) fail('pin_mapping',`${s.sourcePortId}: expected one source port, got ${ports.length}`)
+    return ports[0]
+  }
   const components=cj.filter(e=>e.type==='source_component').filter(e=>e.name===s.component)
   if(components.length!==1) fail('pin_mapping',`${s.component}: expected one source component, got ${components.length}; use sourcePortId in repeated scopes`)
   const component=components[0]

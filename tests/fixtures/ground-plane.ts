@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import type { CircuitJson } from '../../src/board'
 import type { Modeling } from '../../src/pipeline'
 
+/** The straight two-pad fixture with a bottom-layer ground plane, ground pins and a receiver IBIS model added, for routed-copper return-path tests. */
 export function groundPlaneFixture(): { circuit: CircuitJson; modeling: Modeling } {
   const circuit = JSON.parse(readFileSync(new URL('./straight.circuit.json', import.meta.url), 'utf8')) as CircuitJson
   const modeling = JSON.parse(readFileSync(new URL('./straight.modeling.json', import.meta.url), 'utf8')) as Modeling
@@ -33,7 +34,8 @@ export function groundPlaneFixture(): { circuit: CircuitJson; modeling: Modeling
   return { circuit, modeling }
 }
 
-export function routedGroundPlaneFixture() {
+/** The ground-plane fixture with the first ground pad moved to top and tied down through a short lead and via, so the return path changes layer. */
+export function routedGroundPlaneFixture(): { circuit: CircuitJson; modeling: Modeling; lead: Extract<CircuitJson[number], { type: 'pcb_trace' }> } {
   const { circuit, modeling } = groundPlaneFixture()
   modeling.viaPlatingMm = .025
   modeling.viaEquivalentWidthMm = .15

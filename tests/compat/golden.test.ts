@@ -13,12 +13,18 @@ const HASHES = new URL('./artifact-hashes.json', import.meta.url)
 const update = process.env.UPDATE_SNAPSHOTS === '1'
 
 type Result = Awaited<ReturnType<typeof runPipeline>>
+/** Turns an artifact body (string or byte array) into bytes so it can be hashed. */
 const bytes = (body: unknown): Buffer => typeof body === 'string' ? Buffer.from(body, 'utf8') : Buffer.from(body as Uint8Array)
-const sha256 = (body: unknown) => createHash('sha256').update(bytes(body)).digest('hex')
-const withoutFiles = ({ files, ...rest }: Result) => { void files; return JSON.stringify(rest) }
+/** Hex SHA-256 of an artifact body; the golden snapshot stores these instead of the full bytes. */
+const sha256 = (body: unknown): string => createHash('sha256').update(bytes(body)).digest('hex')
+/** The pipeline result as JSON with the artifact files left out, so the rest can be compared on its own. */
+const withoutFiles = ({ files, ...rest }: Result): string => {
+  void files
+  return JSON.stringify(rest)
+}
 
 /** Same transform as tests/pipeline-rerun.test.mjs: rerun on the result Circuit JSON with shifted waveforms. */
-const shiftedSolver: RunSolver = async request => {
+const shiftedSolver: RunSolver = async (request: Parameters<RunSolver>[0]): ReturnType<RunSolver> => {
   const result = await (fixtureSolver as RunSolver)(request)
   if (request.solver === 'ngspice') result.files['waveform.dat'] = result.files['waveform.dat']!.trim().split('\n').map((line: string, index: number) =>
     index === 0 ? line : line.split(' ').map((sample, column) => column === 0 ? sample : String(Number(sample) + 5)).join(' ')).join('\n') + '\n'
@@ -34,14 +40,23 @@ const scenarios: Record<string, () => Promise<Result>> = {
   },
 }
 
-const read = (url: URL): Record<string, unknown> => { try { return JSON.parse(readFileSync(url, 'utf8')) } catch { return {} } }
+/** Loads a JSON snapshot file, or an empty object when it is missing or unreadable. */
+const read = (url: URL): Record<string, unknown> => {
+  try {
+    return JSON.parse(readFileSync(url, 'utf8'))
+  } catch {
+    return {}
+  }
+}
 const pathSnapshot = read(PATHS) as Record<string, string[]>
 const hashSnapshot = read(HASHES) as Record<string, Record<string, string>>
-const nextPaths: Record<string, string[]> = {}, nextHashes: Record<string, Record<string, string>> = {}
+const nextPaths: Record<string, string[]> = {}
+const nextHashes: Record<string, Record<string, string>> = {}
 
 for (const [name, run] of Object.entries(scenarios)) {
   test(`golden: ${name}`, async () => {
-    const a = await run(), b = await run()
+    const a = await run()
+    const b = await run()
 
     // (a) byte determinism across two runs
     assert.deepEqual(Object.keys(a.files), Object.keys(b.files), 'same artifact paths in the same order')
@@ -51,7 +66,8 @@ for (const [name, run] of Object.entries(scenarios)) {
     const paths = Object.keys(a.files).sort()
     const hashes = Object.fromEntries(paths.map(p => [p, sha256(a.files[p])]))
     hashes['<result-without-files>'] = sha256(withoutFiles(a))
-    nextPaths[name] = paths; nextHashes[name] = hashes
+    nextPaths[name] = paths
+    nextHashes[name] = hashes
     if (update) return
 
     // (b) artifact path snapshot, (c) per-artifact sha256

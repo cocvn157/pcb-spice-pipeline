@@ -43,22 +43,37 @@ export interface ReportData {
 }
 export interface ReportFile { path: string; label: string; description: string; content: string }
 
-export const html = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
-export const number = (value: number | undefined, unit = '', scale = 1) => value === undefined ? 'Not recorded' : `${Number((value * scale).toPrecision(6))}${unit ? ` ${unit}` : ''}`
-const csv = (rows: unknown[][]) => rows.map(row => row.map(value => typeof value === 'number' ? String(value) : `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n') + '\n'
-const table = (heads: string[], rows: unknown[][]) => `<div class="table-scroll"><table><thead><tr>${heads.map(h => `<th>${html(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${html(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
-const label = (context: Pick<ReportContext, 'ports'> | undefined, id: string | null | undefined) => id ? context?.ports[id] ?? id : 'Channel ground'
-const probeLabels = (probe: ReportProbe, context?: ReportContext) => [probe.signalLabel ?? (probe.signalSourceId ? label(context, probe.signalSourceId) : 'Recorded signal'), probe.referenceLabel ?? label(context, probe.referenceSourceId)]
-const tracePath = (points: Array<{ x?: number; y?: number; start?: { x: number; y: number }; end?: { x: number; y: number } }>) => {
+/** Escapes a value for HTML text or attributes; null and undefined become empty. */
+export const html = (value: unknown): string => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
+/** Formats a scaled value to six significant digits with its unit, or 'Not recorded' when missing. */
+export const number = (value: number | undefined, unit: string = '', scale: number = 1): string => value === undefined ? 'Not recorded' : `${Number((value * scale).toPrecision(6))}${unit ? ` ${unit}` : ''}`
+/** Serializes rows as CSV: numbers raw, everything else quoted, with a trailing newline. */
+const csv = (rows: unknown[][]): string => rows.map(row => row.map(value => typeof value === 'number' ? String(value) : `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n') + '\n'
+/** Renders an escaped, horizontally scrollable HTML table. */
+const table = (heads: string[], rows: unknown[][]): string => `<div class="table-scroll"><table><thead><tr>${heads.map(h => `<th>${html(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${html(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+/** Human-readable name of a port or net id; a missing id means the channel ground. */
+const label = (context: Pick<ReportContext, 'ports'> | undefined, id: string | null | undefined): string => id ? context?.ports[id] ?? id : 'Channel ground'
+/** The signal and reference names a probe measures between, preferring labels already attached to it. */
+const probeLabels = (probe: ReportProbe, context?: ReportContext): string[] => [probe.signalLabel ?? (probe.signalSourceId ? label(context, probe.signalSourceId) : 'Recorded signal'), probe.referenceLabel ?? label(context, probe.referenceSourceId)]
+/** SVG path data for a route; non-finite points break the line and pad segments are drawn on their own. */
+const tracePath = (points: Array<{ x?: number; y?: number; start?: { x: number; y: number }; end?: { x: number; y: number } }>): string => {
   let connected = false
   return points.map(point => {
-    if (point.start && point.end) { connected = true; return `M${point.start.x},${-point.start.y} L${point.end.x},${-point.end.y}` }
-    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) { connected = false; return '' }
-    const command = connected ? 'L' : 'M'; connected = true
+    if (point.start && point.end) {
+      connected = true
+      return `M${point.start.x},${-point.start.y} L${point.end.x},${-point.end.y}`
+    }
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+      connected = false
+      return ''
+    }
+    const command = connected ? 'L' : 'M'
+    connected = true
     return `${command}${point.x},${-point.y!}`
   }).join(' ')
 }
 
+/** Collects the board drawing, lane summaries, port names and model settings the report shows next to the waveforms. */
 export function reportContext(circuit: CircuitJson, geometry: Geometry, modeling: Modeling): ReportContext {
   const ports: Record<string, string> = {}
   const components = new Map(circuit.filter(e => e.type === 'source_component').map(e => [e.source_component_id, e]))
@@ -72,13 +87,23 @@ export function reportContext(circuit: CircuitJson, geometry: Geometry, modeling
   for (const net of circuit.filter(e => e.type === 'source_net')) ports[net.source_net_id] = net.name
   const sourcePorts = new Map(circuit.filter(e => e.type === 'source_port').map(port => [port.source_port_id, port]))
   const used = new Set<string>()
-  const usePort = (id?: string) => { const component = sourcePorts.get(id ?? '')?.source_component_id; if (component) used.add(component) }
-  for (const lane of geometry.mappings) { usePort(lane.from); usePort(lane.to) }
+  /** Marks the component that owns this source port as used by the simulation. */
+  const usePort = (id?: string): void => {
+    const component = sourcePorts.get(id ?? '')?.source_component_id
+    if (component) used.add(component)
+  }
+  for (const lane of geometry.mappings) {
+    usePort(lane.from)
+    usePort(lane.to)
+  }
   for (const selection of modeling.passiveComponents ?? []) for (const [id, component] of components)
     if (selection.sourceComponentId ? selection.sourceComponentId === id : selection.component === component.name) used.add(id)
   for (const source of circuit.filter(e => e.type === 'simulation_voltage_source')) for (const id of source.is_dc_source
     ? [source.positive_source_port_id, source.negative_source_port_id] : [source.terminal1_source_port_id, source.terminal2_source_port_id]) usePort(id)
-  for (const supply of modeling.supplies ?? []) { usePort(selectPort(circuit, supply.positive).source_port_id); usePort(selectPort(circuit, supply.negative).source_port_id) }
+  for (const supply of modeling.supplies ?? []) {
+    usePort(selectPort(circuit, supply.positive).source_port_id)
+    usePort(selectPort(circuit, supply.negative).source_port_id)
+  }
   const boardComponents = circuit.filter(e => e.type === 'pcb_component').filter(e => e.do_not_place !== true).map(component => ({
     id: component.pcb_component_id, name: components.get(component.source_component_id)?.name ?? component.pcb_component_id,
     x: component.center.x, y: component.center.y, width: component.width, height: component.height, used: used.has(component.source_component_id),
@@ -117,16 +142,27 @@ export function reportContext(circuit: CircuitJson, geometry: Geometry, modeling
   }
 }
 
+/** Builds every CSV download (overview tables first, then per-run waveforms, eyes and DDR checks). */
 export function reportFiles(data: ReportData): ReportFile[] {
-  const files: ReportFile[] = [], summaries: unknown[][] = [], probes: unknown[][] = [], tests: unknown[][] = [], eyes: unknown[][] = [], assessments: unknown[][] = []
-  const add = (path: string, label: string, description: string, content: string) => files.push({ path: 'csv/' + path, label, description, content })
+  const files: ReportFile[] = []
+  const summaries: unknown[][] = []
+  const probes: unknown[][] = []
+  const tests: unknown[][] = []
+  const eyes: unknown[][] = []
+  const assessments: unknown[][] = []
+  /** Queues a per-run CSV file under csv/. */
+  const add = (path: string, label: string, description: string, content: string): number => files.push({ path: 'csv/' + path, label, description, content })
   data.runs.forEach((run, i) => {
     const prefix = `${String(i + 1).padStart(2, '0')}-${run.name.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').slice(0, 64) || 'experiment'}`
     add(`${prefix}-waveforms.csv`, `${run.name} · full waveforms`, `${run.rows.length.toLocaleString('en-US')} recorded adaptive timestamps; time in seconds, voltage in volts.`,
       csv([['time_s', ...run.probes.map(p => p.name + '_v')], ...run.rows.map(row => [row[0], ...run.probes.map(p => row[p.column])])]))
     for (const probe of run.probes) {
-      let minimum = Infinity, maximum = -Infinity
-      for (const row of run.rows) { minimum = Math.min(minimum, row[probe.column]); maximum = Math.max(maximum, row[probe.column]) }
+      let minimum = Infinity
+      let maximum = -Infinity
+      for (const row of run.rows) {
+        minimum = Math.min(minimum, row[probe.column])
+        maximum = Math.max(maximum, row[probe.column])
+      }
       summaries.push([i + 1, run.name, probe.name, ...probeLabels(probe, data.context), run.rows.length, run.rows[0][0], run.rows.at(-1)![0], minimum, maximum])
       probes.push([run.name, probe.name, probe.name + '_v', ...probeLabels(probe, data.context), probe.signalSourceId, probe.referenceSourceId, probe.simulationVoltageProbeId])
     }
@@ -150,7 +186,8 @@ export function reportFiles(data: ReportData): ReportFile[] {
     })
   })
   const overview: ReportFile[] = []
-  const summary = (path: string, label: string, description: string, rows: unknown[][]) => overview.push({ path: 'csv/' + path, label, description, content: csv(rows) })
+  /** Queues an overview CSV under csv/, listed ahead of the per-run files. */
+  const summary = (path: string, label: string, description: string, rows: unknown[][]): number => overview.push({ path: 'csv/' + path, label, description, content: csv(rows) })
   summary('results-summary.csv', 'Results summary', 'One row per experiment and measured probe; voltage extrema over the full recorded time range.',
     [['order', 'experiment', 'probe', 'signal', 'reference', 'samples', 'start_s', 'end_s', 'minimum_v', 'maximum_v'], ...summaries])
   summary('probe-map.csv', 'Probe and column map', 'What each voltage column measures: signal minus reference.',
@@ -170,18 +207,25 @@ export function reportFiles(data: ReportData): ReportFile[] {
   return [...overview, ...files]
 }
 
+/** SVG overview of the board with the simulated traces and components highlighted; empty when no route is known. */
 function routeDrawing(context: ReportContext): string {
   const points = context.lanes.flatMap(lane => lane.route)
   if (!points.length) return ''
-  const colors = ['#2563eb', '#e96535', '#159c80'], board = context.board
+  const colors = ['#2563eb', '#e96535', '#159c80']
+  const board = context.board
   const boxes = board?.components.filter(component => component.used) ?? []
   const selectedBounds = points.reduce((b, p) => ({ minX: Math.min(b.minX, p.x), maxX: Math.max(b.maxX, p.x), minY: Math.min(b.minY, p.y), maxY: Math.max(b.maxY, p.y) }),
     { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity })
   const full = board?.bounds ?? selectedBounds
-  const view = (bounds: typeof selectedBounds) => { const margin = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY, 1) * .06 + .5
-    return `${bounds.minX - margin} ${-bounds.maxY - margin} ${bounds.maxX - bounds.minX + 2 * margin} ${bounds.maxY - bounds.minY + 2 * margin}` }
-  const selectedIds = new Set(context.lanes.map(lane => lane.pcbTraceId)), fontSize = Math.max((full.maxX - full.minX) / 75, .5)
-  const rect = (box: { x: number; y: number; width: number; height: number }) => `x="${box.x - box.width / 2}" y="${-box.y - box.height / 2}" width="${box.width}" height="${box.height}"`
+  /** SVG viewBox around the bounds with a small margin (y is flipped for screen coordinates). */
+  const view = (bounds: typeof selectedBounds): string => {
+    const margin = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY, 1) * .06 + .5
+    return `${bounds.minX - margin} ${-bounds.maxY - margin} ${bounds.maxX - bounds.minX + 2 * margin} ${bounds.maxY - bounds.minY + 2 * margin}`
+  }
+  const selectedIds = new Set(context.lanes.map(lane => lane.pcbTraceId))
+  const fontSize = Math.max((full.maxX - full.minX) / 75, .5)
+  /** SVG rect attributes for a center-based box. */
+  const rect = (box: { x: number; y: number; width: number; height: number }): string => `x="${box.x - box.width / 2}" y="${-box.y - box.height / 2}" width="${box.width}" height="${box.height}"`
   return `<div class="route-map"><div class="board-toolbar">${board?.traces.length ?? context.lanes.length} traces · ${board?.components.length ?? 0} components · all copper layers</div><svg id="board-diagram" viewBox="${view(full)}" role="img" aria-label="Board overview: unused traces and component bounds in gray; simulated traces and components highlighted">
     <g class="board-outline">${board?.outlines.map(box => `<rect ${rect(box)}/>`).join('') ?? ''}${board?.outlinePaths.map(path => `<path d="${path}"/>`).join('') ?? ''}</g>
     <g class="unused-components">${board?.components.filter(component => !component.used).map(component => `<rect ${rect(component)} data-component="${html(component.id)}"><title>${html(component.name)} · outside this simulation</title></rect>`).join('') ?? ''}</g>
@@ -192,15 +236,19 @@ function routeDrawing(context: ReportContext): string {
     </svg><div class="board-legend">${context.lanes.map((lane, i) => `<span style="color:${colors[i % colors.length]}">● ${html(lane.name)}</span>`).join('')}<span class="component-key">▣ Simulated components</span><span class="unused-key">— Context only</span></div><p class="hint">Top view · component bounds · gray geometry is outside this simulation.</p></div>`
 }
 
+/** Mode and enabled cells for a buffer-state table row. */
 function bufferState(state: SimulationIbisPinState): string[] {
   if(state.is_output) return ['output',String(state.is_output_enabled)]
   return ['input','—']
 }
 
+/** HTML for each configured DDR assessment: status, margins, and the explicit limits behind them. */
 function ddrFindings(eyes: ReportEye[]): string {
   return eyes.flatMap(eye => eye.ddrAssessment ? [eye.ddrAssessment] : []).map(d => {
-    const c = d.config, t = c.thresholds
-    const minimum = (key: 'setupMarginSeconds' | 'holdMarginSeconds') => {
+    const c = d.config
+    const t = c.thresholds
+    /** Smallest evaluated margin of this kind across captures, in picoseconds. */
+    const minimum = (key: 'setupMarginSeconds' | 'holdMarginSeconds'): string => {
       const values = d.captures.flatMap(c => c[key] === undefined ? [] : [c[key]!])
       return values.length ? number(Math.min(...values), 'ps', 1e12) : 'Not evaluated'
     }
@@ -218,8 +266,10 @@ function ddrFindings(eyes: ReportEye[]): string {
   }).join('')
 }
 
-export function reportSections(data: ReportData, files: ReportFile[]) {
-  const context = data.context, observed = new Set(data.runs.flatMap(run => run.probes.filter(p => p.name === data.comparisonProbeName).map(p => p.signalSourceId)))
+/** The HTML fragments for each report tab, built from the report data and its CSV files. */
+export function reportSections(data: ReportData, files: ReportFile[]): { traces: string; plan: string; findings: string; settings: string; downloads: string } {
+  const context = data.context
+  const observed = new Set(data.runs.flatMap(run => run.probes.filter(p => p.name === data.comparisonProbeName).map(p => p.signalSourceId)))
   const traces = context ? `<div class="board-layout">${routeDrawing(context)}<aside class="trace-inspector"><h2>Selected network</h2>${context.lanes.map((lane, i) => `<div class="trace-row"><h3><span style="color:${['#2563eb', '#e96535', '#159c80'][i % 3]}">●</span> ${html(lane.name)} <small>${data.changes?.length && observed.size ? observed.has(lane.to) ? 'Victim' : 'Neighbor' : ''}</small></h3><div class="pin-pair">${html(label(context, lane.from))} → ${html(label(context, lane.to))}</div><dl><dt>Path length</dt><dd>${number(lane.lengthMm, 'mm')}</dd><dt>Wire width</dt><dd>${lane.widthsMm.map(v => number(v, 'mm')).join(' / ')}</dd><dt>Vias</dt><dd>${lane.vias}</dd></dl><div class="hint">${html(lane.layers.join(' → '))}</div></div>`).join('')}<details><summary>Trace IDs</summary>${table(['Trace', 'Source / PCB ID'], context.lanes.map(lane => [lane.name, `${lane.sourceTraceId} / ${lane.pcbTraceId}`]))}</details></aside></div>` : '<p>Trace geometry unavailable.</p>'
   const plan = data.runs.map(run => `<article class="test-card"><h2>${html(run.name)}</h2>${run.test ? `<p class="hint">${number(run.test.startTimeSeconds, 'ns', 1e9)}–${number(run.test.durationSeconds, 'ns', 1e9)} · max step ${number(run.test.maxStepSeconds, 'ps', 1e12)} · ${run.rows.length.toLocaleString('en-US')} samples</p>${table(['Trace / driver', 'Drive bits', 'Schedule', 'Initial bit'], run.test.stimuli.map(s => [
     `${context?.lanes.find(lane => lane.from === s.source_port_id)?.name ?? 'Signal'} · ${label(context, s.source_port_id)}`,
@@ -227,8 +277,12 @@ export function reportSections(data: ReportData, files: ReportFile[]) {
     `${s.transmission_pattern.repeat ? 'Repeat' : 'Once'}; UI ${number(s.bit_duration_ms, 'ns', 1e6)}; starts ${number(s.start_time_ms, 'ns', 1e6)}`,
     s.initial_state ^ Number(s.inverted ?? false)]))}${run.test.states?.length ? `<details><summary>Buffer states</summary>${table(['Pin', 'Mode', 'Enabled'], run.test.states.map(state => [label(context, state.source_port_id), ...bufferState(state)]))}</details>` : ''}` : '<p>Settings unavailable.</p>'}</article>`).join('')
   const findings = data.runs.map((run, i) => `<article class="result-card"><div class="result-heading"><h2>${html(run.name)}</h2><button data-run="${i}" data-probe="${Math.max(0, run.probes.findIndex(p => p.name === data.comparisonProbeName))}" data-mode="waveform">Open waveforms</button></div>${table(['Probe', 'Signal − reference', 'Minimum', 'Maximum'], run.probes.map(probe => {
-    let minimum = Infinity, maximum = -Infinity
-    for (const row of run.rows) { minimum = Math.min(minimum, row[probe.column]); maximum = Math.max(maximum, row[probe.column]) }
+    let minimum = Infinity
+    let maximum = -Infinity
+    for (const row of run.rows) {
+      minimum = Math.min(minimum, row[probe.column])
+      maximum = Math.max(maximum, row[probe.column])
+    }
     return [probe.name, probeLabels(probe, context).join(' − '), number(minimum, 'V'), number(maximum, 'V')]
   }))}${run.eyes.length ? table(['Eye / probe', 'Gate', 'UI / origin', 'Windows', 'Voltage range'], run.eyes.map(eye => [
     `${eye.name} / ${run.probes.find(p => p.simulationVoltageProbeId === eye.simulationVoltageProbeId)?.name ?? 'recorded probe'}`,

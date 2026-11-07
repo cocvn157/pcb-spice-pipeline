@@ -1,24 +1,33 @@
 // Test helper: today's runPipeline order composed by hand from the new modules (board, buffers, simulation,
 // extraction, ddr, observation), without the pipeline module. Exercises runExperiment's acceptance rules.
-import { ArtifactLedger, rootScope } from '../../src/kernel'
+import { ArtifactLedger, rootScope, type FileMap } from '../../src/kernel'
 import type { RunSolver } from '../../src/solver'
-import { geometryFromCircuitJson, validateCircuitRecords, type CircuitJson, type Modeling as BoardModeling } from '../../src/board'
-import { extractChannel, type ExtractionModeling } from '../../src/extraction'
-import { foldEyes, type EyeFoldInput } from '../../src/observation'
-import { assertConverter, admitBuffers, compileBuffers, ibisAssembly, type BufferModeling, type IbisSources } from '../../src/buffers'
+import { geometryFromCircuitJson, validateCircuitRecords, type CircuitJson, type Geometry, type Modeling as BoardModeling } from '../../src/board'
+import { extractChannel, type ChannelMatrices, type ExtractionModeling } from '../../src/extraction'
+import { foldEyes, type EyeFoldInput, type EyeResult } from '../../src/observation'
+import { assertConverter, admitBuffers, compileBuffers, ibisAssembly, type AssemblyEntry, type BufferModeling, type IbisSources } from '../../src/buffers'
 import {
   generalDeclarations, electricalSources, safeSimulationPlans, modelRunDefinition, bindExperiments, electricalNodeMap,
-  runExperiment, simulationResultCircuitJson, experimentResult, type ExperimentRun, type SimulationModeling,
+  runExperiment, simulationResultCircuitJson, experimentResult, type ExperimentResult, type ExperimentRun, type SimulationModeling,
 } from '../../src/simulation'
 import { resolveDdrAssessments, assessDdr, type DdrModeling } from '../../src/ddr'
 
 export type ComposedModeling = BoardModeling & ExtractionModeling & SimulationModeling & DdrModeling & BufferModeling
 export interface ComposeInput { circuitJson: CircuitJson; modeling: ComposedModeling; ibisSources: IbisSources; runSolver: RunSolver; onProgress?: (m: string) => void }
+export interface ComposeResult {
+  circuitJson: CircuitJson; simulationResultCircuitJson: CircuitJson; modeling: ComposedModeling; geometry: Geometry; matrices: ChannelMatrices
+  experiments: ExperimentResult<EyeResult, AssemblyEntry>[]; limitations: string[]; files: FileMap
+}
 
-export async function compose({ circuitJson, modeling, ibisSources, runSolver, onProgress = () => {} }: ComposeInput) {
+/**
+ * Runs the whole board-to-eye flow the way runPipeline does, but wired by hand from the modules.
+ * Tests use it to drive runExperiment's acceptance rules with a stubbed solver.
+ */
+export async function compose({ circuitJson, modeling, ibisSources, runSolver, onProgress = () => {} }: ComposeInput): Promise<ComposeResult> {
   validateCircuitRecords(circuitJson)
   assertConverter()
-  const geometry = geometryFromCircuitJson(circuitJson, modeling), declarations = generalDeclarations(circuitJson, geometry, modeling)
+  const geometry = geometryFromCircuitJson(circuitJson, modeling)
+  const declarations = generalDeclarations(circuitJson, geometry, modeling)
   const ddrAssessments = resolveDdrAssessments(declarations.plans, geometry, modeling.ddrAssessments)
   const electrical = electricalSources(circuitJson, modeling, declarations.nodes)
   const plans = safeSimulationPlans(declarations.plans)
@@ -33,15 +42,18 @@ export async function compose({ circuitJson, modeling, ibisSources, runSolver, o
   const ctx = { runSolver, progress: onProgress }
   const extracted = await extractChannel(geometry, modeling, rootScope('extraction'), ctx)
   ledger = ledger.add(extracted.artifacts)
-  const runs: ExperimentRun[] = [], experiments = []
+  const runs: ExperimentRun[] = []
+  const experiments = []
   for (const [index, plan] of plans.entries()) {
     const scope = rootScope('simulation').child('experiments', plan.simulationExperimentId)
     const assembly = ibisAssembly(compiled[index], scope.handTo('buffers'))
     ledger = ledger.add(assembly.artifacts)
     const run = await runExperiment(ctx, scope, bound, index, geometry, modeling, extracted.value.matrices)
-    ledger = ledger.add(run.artifacts); runs.push(run.value)
+    ledger = ledger.add(run.artifacts)
+    runs.push(run.value)
     const inputs: EyeFoldInput[] = plan.eyes.map(eye => {
-      const assessment = ddrAssessments.find(a => a.eye === eye), ddrAssessment = assessment ? assessDdr(run.value.rows, assessment) : undefined
+      const assessment = ddrAssessments.find(a => a.eye === eye)
+      const ddrAssessment = assessment ? assessDdr(run.value.rows, assessment) : undefined
       return ddrAssessment ? { request: eye, alignment: { kind: 'received-differential-dqs', captureTimesSeconds: ddrAssessment.captureTimesSeconds }, ddrAssessment } : { request: eye, alignment: { kind: 'stimulus-clock' } }
     })
     const eyes = foldEyes(run.value.rows, inputs, { sha256: run.value.waveformCsvSha256 }, scope.handTo('observation'))

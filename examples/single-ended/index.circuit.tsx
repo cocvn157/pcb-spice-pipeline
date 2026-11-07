@@ -1,4 +1,5 @@
 import { Circuit, analog } from "@tscircuit/core"
+import type { JSX } from "react"
 import { inputPad, outputPad } from "./models"
 import { BenchSupply, RoutedTrace, Sc70Pads } from "../differential-data/pcb"
 import construction from "./board-construction.json"
@@ -7,7 +8,7 @@ export { modeling } from "./simulation.config"
 const pins = { pin1: "NC", pin2: "A", pin3: "GND", pin4: "Y", pin5: "VCC" }
 
 /** Explicit CMOS output-pad data; this does not simulate the inverter core. */
-function Board() {
+function Board(): JSX.Element {
   return <board width={construction.widthMm} height={construction.heightMm}
     thickness={construction.thicknessMm} layers={2} routingDisabled schematicDisabled>
     <chip name="TX" manufacturerPartNumber="SN74LVC1G04DCK" pcbX={-15} pcbY={0}

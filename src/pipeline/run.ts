@@ -18,7 +18,8 @@ function sealResult(state: StateAt<'sealed'>, files: FileMap): PipelineResult {
 export async function runPipeline(options: PipelineOptions): Promise<PipelineResult> {
   const { runSolver, ...pure } = options
   const progress = pure.onProgress ?? (() => {})
-  const pureContext: PureContext = { progress }, solverContext: SolverContext = { runSolver, progress }
+  const pureContext: PureContext = { progress }
+  const solverContext: SolverContext = { runSolver, progress }
   let state: PipelineState = { phase: 'input', options: pure }
   let ledger = ArtifactLedger.empty()
   for (const stage of STAGES as readonly AnyStage[]) {

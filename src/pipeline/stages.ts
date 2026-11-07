@@ -76,13 +76,15 @@ export const extract: Stage<'bound', 'extracted'> = {
 export const simulate: Stage<'extracted', 'simulated'> = {
   name: 'simulate', from: 'extracted', to: 'simulated',
   run: async (state, ctx) => {
-    const runs: ObservedRun[] = [], artifacts: Artifact[] = []
+    const runs: ObservedRun[] = []
+    const artifacts: Artifact[] = []
     for (const [index, plan] of state.plans.entries()) {
       const scope = rootScope('simulation').child('experiments', plan.simulationExperimentId)
       const assembly = ibisAssembly(state.compiled[index], scope.handTo('buffers'))
       const run = await runExperiment(ctx, scope, state.bound, index, state.geometry, state.modeling, state.channel.matrices)
       const inputs: EyeFoldInput[] = plan.eyes.map(eye => {
-        const assessment = state.ddr.find(a => a.eye === eye), ddrAssessment = assessment ? assessDdr(run.value.rows, assessment) : undefined
+        const assessment = state.ddr.find(a => a.eye === eye)
+        const ddrAssessment = assessment ? assessDdr(run.value.rows, assessment) : undefined
         return ddrAssessment
           ? { request: eye, alignment: { kind: 'received-differential-dqs', captureTimesSeconds: ddrAssessment.captureTimesSeconds }, ddrAssessment }
           : { request: eye, alignment: { kind: 'stimulus-clock' } }

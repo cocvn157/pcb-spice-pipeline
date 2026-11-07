@@ -9,29 +9,45 @@ import {tmpdir} from 'node:os'
 import {createNativeSolver,loadIbisSources} from '../../src/adapters'
 import {invoke} from '../../src/solver'
 import {rootScope} from '../../src/kernel'
+import type {CircuitJson} from '../../src/board'
+import {nativeDdrTimeout} from '../fixtures/native-ddr-timeout'
 
 type T={after:(fn:()=>Promise<void>|void)=>void}
-const sandbox=async(t: T)=>{
-  const root=await mkdtemp(join(tmpdir(),'pcb-adapters-test-')),tmp=join(root,'tmp'),previous=process.env.TMPDIR
-  await mkdir(tmp);process.env.TMPDIR=tmp
+type Sandbox={root:string;tmp:string;tool:(body:string)=>string[];cwdFile:string;workdirGone:()=>Promise<void>}
+/** Points TMPDIR at a fresh private directory for one test and restores it afterwards, so leftover workdirs are easy to spot. */
+const sandbox=async(t: T): Promise<Sandbox>=>{
+  const root=await mkdtemp(join(tmpdir(),'pcb-adapters-test-'))
+  const tmp=join(root,'tmp')
+  const previous=process.env.TMPDIR
+  await mkdir(tmp)
+  process.env.TMPDIR=tmp
   assert.equal(tmpdir(),tmp)
-  t.after(async()=>{if(previous===undefined) delete process.env.TMPDIR; else process.env.TMPDIR=previous;await rm(root,{recursive:true,force:true})})
+  t.after(async()=>{
+    if(previous===undefined) delete process.env.TMPDIR
+    else process.env.TMPDIR=previous
+    await rm(root,{recursive:true,force:true})
+  })
   // The fake tool records its cwd outside the workdir, so we can assert that exact dir is gone.
-  const cwdFile=join(root,'cwd.txt'),tool=(body: string)=>[ '-e',`require('node:fs').writeFileSync(${JSON.stringify(cwdFile)},process.cwd());${body}`]
-  const workdirGone=async()=>{
+  const cwdFile=join(root,'cwd.txt')
+  /** Node `-e` args that record the tool's cwd before running `body`, so the test can check that workdir is gone later. */
+  const tool=(body: string): string[]=>[ '-e',`require('node:fs').writeFileSync(${JSON.stringify(cwdFile)},process.cwd());${body}`]
+  /** Asserts the private tmp dir is empty again and the exact workdir the tool ran in no longer exists. */
+  const workdirGone=async(): Promise<void>=>{
     assert.deepEqual(await readdir(tmp),[])
     await assert.rejects(stat(await readFile(cwdFile,'utf8')),{code:'ENOENT'})
   }
   return {root,tmp,tool,cwdFile,workdirGone}
 }
-const code=(expected: string,message?: RegExp)=>(error: unknown)=>{
+/** Builds an assert.rejects validator that checks the error's code and, optionally, its message. */
+const code=(expected: string,message?: RegExp): (error: unknown)=>boolean=>(error: unknown)=>{
   assert.equal((error as {code:string}).code,expected)
   if(message) assert.match((error as Error).message,message)
   return true
 }
 
 test('unsafe input or output path is rejected before any workdir exists',async t=>{
-  const {tmp}=await sandbox(t),solver=createNativeSolver({tools:{ngspice:process.execPath}})
+  const {tmp}=await sandbox(t)
+  const solver=createNativeSolver({tools:{ngspice:process.execPath}})
   for(const files of [{'../escape':'x'},{'/abs':'x'},{'a/./b':'x'},{'a\\b':'x'},{'c:x':'x'},{'':'x'}] as Record<string,string>[])
     await assert.rejects(solver({solver:'ngspice',files,args:['-e',''],outputFiles:[]}),code('file_path',/Expected a safe project-relative file path/))
   await assert.rejects(solver({solver:'ngspice',files:{},args:['-e',''],outputFiles:['../out']}),code('file_path'))
@@ -40,27 +56,31 @@ test('unsafe input or output path is rejected before any workdir exists',async t
 })
 
 test('input write failure after mkdtemp still removes the workdir',async t=>{
-  const {tmp}=await sandbox(t),solver=createNativeSolver({tools:{ngspice:process.execPath}})
+  const {tmp}=await sandbox(t)
+  const solver=createNativeSolver({tools:{ngspice:process.execPath}})
   // 'a' is written as a file, then 'a/b' needs it to be a directory.
   await assert.rejects(solver({solver:'ngspice',files:{'a':'x','a/b':'y'},args:['-e',''],outputFiles:[]}),{code:'EEXIST'})
   assert.deepEqual(await readdir(tmp),[])
 })
 
 test('spawn failure (nonexistent tool) rejects native_solver and removes the workdir',async t=>{
-  const {root,tmp}=await sandbox(t),solver=createNativeSolver({tools:{fasthenry:join(root,'no-such-tool')}})
+  const {root,tmp}=await sandbox(t)
+  const solver=createNativeSolver({tools:{fasthenry:join(root,'no-such-tool')}})
   await assert.rejects(solver({solver:'fasthenry',files:{'in.inp':'x'},args:[],outputFiles:['Zc.mat']}),code('native_solver',/^native_solver: fasthenry: .*ENOENT/))
   assert.deepEqual(await readdir(tmp),[])
 })
 
 test('nonzero exit rejects native_solver with logs and removes the workdir',async t=>{
-  const {tool,workdirGone}=await sandbox(t),solver=createNativeSolver({tools:{ngspice:process.execPath}})
+  const {tool,workdirGone}=await sandbox(t)
+  const solver=createNativeSolver({tools:{ngspice:process.execPath}})
   await assert.rejects(solver({solver:'ngspice',files:{'deck.cir':'x'},args:tool(`process.stdout.write('out');process.stderr.write('err');process.exit(3)`),outputFiles:[]}),
     code('native_solver',/ngspice: Command failed[\s\S]*\nout\nerr$/))
   await workdirGone()
 })
 
 test('timeout kills the tool, rejects native_timeout and removes the workdir',async t=>{
-  const {root,tool,workdirGone}=await sandbox(t),marker=join(root,'survived.txt')
+  const {root,tool,workdirGone}=await sandbox(t)
+  const marker=join(root,'survived.txt')
   const solver=createNativeSolver({tools:{fastercap:process.execPath},timeoutMs:200})
   const started=Date.now()
   await assert.rejects(solver({solver:'fastercap',files:{'deck.lst':'x'},args:tool(`setTimeout(()=>require('node:fs').writeFileSync(${JSON.stringify(marker)},'x'),1500)`),outputFiles:['out.txt']}),
@@ -72,7 +92,8 @@ test('timeout kills the tool, rejects native_timeout and removes the workdir',as
 })
 
 test('missing requested output is omitted (solver.invoke rejects native_output) and the workdir is removed',async t=>{
-  const {tool,workdirGone}=await sandbox(t),solver=createNativeSolver({tools:{ngspice:process.execPath}})
+  const {tool,workdirGone}=await sandbox(t)
+  const solver=createNativeSolver({tools:{ngspice:process.execPath}})
   const request={solver:'ngspice' as const,files:{'deck.cir':'x'},args:tool(`require('node:fs').writeFileSync('extra.dat','e')`),outputFiles:['waveform.dat']}
   const result=await solver(request)
   assert.deepEqual(Object.keys(result.files),[])  // only requested outputs are read; extra.dat is not
@@ -82,7 +103,8 @@ test('missing requested output is omitted (solver.invoke rejects native_output) 
 })
 
 test('requested output that is a symlink out of the workdir rejects file_path and removes the workdir',async t=>{
-  const {root,tool,workdirGone}=await sandbox(t),secret=join(root,'secret.txt')
+  const {root,tool,workdirGone}=await sandbox(t)
+  const secret=join(root,'secret.txt')
   await writeFile(secret,'secret')
   const solver=createNativeSolver({tools:{ngspice:process.execPath}})
   await assert.rejects(solver({solver:'ngspice',files:{},args:tool(`require('node:fs').symlinkSync(${JSON.stringify(secret)},'out.dat')`),outputFiles:['out.dat']}),
@@ -91,15 +113,49 @@ test('requested output that is a symlink out of the workdir rejects file_path an
 })
 
 test('loadIbisSources rejects traversal and symlinks escaping baseDir, follows contained symlinks',async t=>{
-  const {root}=await sandbox(t),baseDir=join(root,'project'),outside=join(root,'outside.ibs')
-  await mkdir(join(baseDir,'models'),{recursive:true});await writeFile(outside,'[IBIS Ver] 5.0')
-  const declare=(path: string)=>[{type:'simulation_ibis_model',simulation_ibis_model_id:'m',ibis_model_asset:{project_relative_path:path}}] as never
+  const {root}=await sandbox(t)
+  const baseDir=join(root,'project')
+  const outside=join(root,'outside.ibs')
+  await mkdir(join(baseDir,'models'),{recursive:true})
+  await writeFile(outside,'[IBIS Ver] 5.0')
+  /** Circuit JSON that declares a single IBIS model file at `path`. */
+  const declare=(path: string): CircuitJson=>[{type:'simulation_ibis_model',simulation_ibis_model_id:'m',ibis_model_asset:{project_relative_path:path}}] as never
   await assert.rejects(loadIbisSources({circuitJson:declare('../outside.ibs'),baseDir}),code('file_path',/Expected a safe project-relative file path: \.\.\/outside\.ibs/))
   await symlink(outside,join(baseDir,'models/file.ibs'))
   await assert.rejects(loadIbisSources({circuitJson:declare('models/file.ibs'),baseDir}),code('file_path',/File must remain inside/))
   await symlink(root,join(baseDir,'up'))  // directory symlink escaping baseDir
   await assert.rejects(loadIbisSources({circuitJson:declare('up/outside.ibs'),baseDir}),code('file_path'))
-  await writeFile(join(baseDir,'real.ibs'),'inside');await symlink(join(baseDir,'real.ibs'),join(baseDir,'models/link.ibs'))
+  await writeFile(join(baseDir,'real.ibs'),'inside')
+  await symlink(join(baseDir,'real.ibs'),join(baseDir,'models/link.ibs'))
   const sources=await loadIbisSources({circuitJson:declare('models/link.ibs'),baseDir})
   assert.equal(new TextDecoder().decode(sources['models/link.ibs'] as Uint8Array),'inside')
+})
+
+// Moved from tests/native-timeout.test.ts; assertions unchanged.
+let ddr: ReturnType<typeof nativeDdrTimeout> | undefined
+/** Renders the DDR timeout board once, on first use, so the lifecycle tests above do not pay for it. */
+const fixture = (): ReturnType<typeof nativeDdrTimeout> => (ddr ??= nativeDdrTimeout())
+test('native TSX prepares a three-lane DDR extraction and two eye declarations', async () => {
+  const { records, deck } = await fixture()
+  assert.equal(records.filter(r => r.type === 'simulation_eye_diagram').length, 2)
+  assert.equal((deck.match(/^\.external /gm) ?? []).length, 4)
+  assert.match(deck, /meshMm=1.5/)
+  assert.match(deck, /nhinc=5 nwinc=5/)
+})
+
+// Opt-in real FastHenry process; no solver output is mocked or accepted.
+// PCB_SPICE_FASTHENRY=/path/to/fasthenry node --import tsx --test tests/adapters/native-solver.test.ts
+// A short deadline reproduces adapter behavior without a 15-minute board run.
+test('native TSX DDR extraction reports its process deadline', {
+  skip: !process.env.PCB_SPICE_FASTHENRY,
+}, async () => {
+  const { deck } = await fixture()
+  const solve = createNativeSolver({ tools: { fasthenry: process.env.PCB_SPICE_FASTHENRY }, timeoutMs: 100 })
+  await assert.rejects(solve({ solver: 'fasthenry', args: ['-p', 'seg', 'channel.inp'],
+    files: { 'channel.inp': deck }, outputFiles: ['Zc.mat'] }), error => {
+    console.log((error as Error).message)
+    assert.equal((error as { code: string }).code, 'native_timeout')
+    assert.match((error as Error).message, /fasthenry.*100 ms/)
+    return true
+  })
 })

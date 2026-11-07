@@ -38,11 +38,14 @@ export function stackupFromCircuitJson(circuit: CircuitJson): BoardStackup {
     fail('stackup', 'Copper layers must be distinct, ordered top to bottom, and match pcb_board.num_layers')
   if (layers[0]?.layer_type !== 'copper' || layers.at(-1)?.layer_type !== 'copper')
     fail('stackup', 'Physical stack must start and end with copper (outside soldermask is ignored)')
-  const copperLayers: CopperLayer[] = [], dielectrics: DielectricLayer[] = []
-  const round = (value: number) => Math.round(value * 1e10) / 1e10
+  const copperLayers: CopperLayer[] = []
+  const dielectrics: DielectricLayer[] = []
+  /** Rounds to 1e-10 mm so summed layer thicknesses do not drift by float error. */
+  const round = (value: number): number => Math.round(value * 1e10) / 1e10
   let z = -copper.at(-1)!.thickness
   for (const layer of [...layers].reverse()) {
-    const zMinMm = round(z), zMaxMm = round(z + layer.thickness)
+    const zMinMm = round(z)
+    const zMaxMm = round(z + layer.thickness)
     if (layer.layer_type === 'copper') copperLayers.push({ name: layer.layer, zMinMm, zMaxMm,
       conductivitySm: layer.electrical_conductivity_s_per_m ?? defaultCopperConductivitySm })
     else dielectrics.push({ material: layer.material_name, zMinMm, zMaxMm, relativePermittivity: layer.relative_permittivity })

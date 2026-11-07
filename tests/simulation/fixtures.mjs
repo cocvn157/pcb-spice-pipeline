@@ -2,9 +2,11 @@
 import {readFile} from 'node:fs/promises'
 import {geometryFromCircuitJson} from '../../src/board/index.js'
 const read=async path=>JSON.parse(await readFile(new URL(path,import.meta.url),'utf8'))
-export const circuit=await read('../fixtures/straight.circuit.json');export const physical=await read('../fixtures/straight.modeling.json')
+export const circuit=await read('../fixtures/straight.circuit.json')
+export const physical=await read('../fixtures/straight.modeling.json')
 export const fixture=()=>{
-  const cj=structuredClone(circuit),m={...structuredClone(physical),channelReference:{sourcePortId:'g0'},supplies:[{positive:{sourcePortId:'v0'},negative:{sourcePortId:'g0'},voltageV:3.3}]}
+  const cj=structuredClone(circuit)
+  const m={...structuredClone(physical),channelReference:{sourcePortId:'g0'},supplies:[{positive:{sourcePortId:'v0'},negative:{sourcePortId:'g0'},voltageV:3.3}]}
   cj.push(...['u0','u1'].map((id,i)=>({type:'source_component',source_component_id:id,name:i?'RX':'TX',source_group_id:'board-group'})),{type:'source_port',source_port_id:'g0',source_component_id:'u0',name:'GND'},{type:'source_port',source_port_id:'v0',source_component_id:'u0',name:'VDD'})
   cj.push({type:'source_group',source_group_id:'board-group',subcircuit_id:'board',is_subcircuit:true})
   for(const [index,ids] of [['p0','p1'],['p2','p3']].entries()) cj.push({type:'simulation_ibis_model',simulation_ibis_model_id:`model-${index}`,source_component_id:`u${index}`,ibis_model_asset:{project_relative_path:'models/test.ibs',url:'./models/test.ibs',mimetype:'text/plain'},ibis_component_name:'test',ibis_pin_name_to_source_port_id:Object.fromEntries(ids.map((id,i)=>[String(i+1),id])),model_value_corner:'typical',include_package_parasitics:false})
@@ -30,8 +32,10 @@ export function inMemoryInput() {
   cj.push({type:'source_trace',source_trace_id:'vdd',connected_source_port_ids:['v0','rx-vdd'],connected_source_net_ids:[]},
     {type:'source_trace',source_trace_id:'gnd',connected_source_port_ids:['g0','rx-gnd'],connected_source_net_ids:[]})
   const models=cj.filter(record=>record.type==='simulation_ibis_model')
-  models[0].ibis_pin_name_to_source_port_id['3']='v0';models[0].ibis_pin_name_to_source_port_id['4']='g0'
-  models[1].ibis_pin_name_to_source_port_id['3']='rx-vdd';models[1].ibis_pin_name_to_source_port_id['4']='rx-gnd'
+  models[0].ibis_pin_name_to_source_port_id['3']='v0'
+  models[0].ibis_pin_name_to_source_port_id['4']='g0'
+  models[1].ibis_pin_name_to_source_port_id['3']='rx-vdd'
+  models[1].ibis_pin_name_to_source_port_id['4']='rx-gnd'
   const circuitJson=cj.filter(record=>record.type!=='simulation_digital_stimulus')
   const bytes=Buffer.from('[IBIS Ver] 4.2\r\n[Component] test\r\n[Pin] signal_name model_name\r\n1 D1 IN\r\n2 D2 IN\r\n3 VDD POWER\r\n4 VSS GND\r\n[Model] IN\r\nModel_type Input\r\nC_comp 1p 1p 1p\r\n[Voltage Range] 3.3 3.3 3.3\r\n[Power Clamp]\r\n-10 -0.1 -0.1 -0.1\r\n10 0.1 0.1 0.1\r\n[Gnd Clamp]\r\n-10 -0.2 -0.2 -0.2\r\n10 0.2 0.2 0.2\r\n[End]\r\n')
   return {circuitJson,modeling:m,ibisSources:{'models/test.ibs':bytes}}

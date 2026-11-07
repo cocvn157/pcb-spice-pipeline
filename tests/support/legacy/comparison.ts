@@ -7,9 +7,12 @@ import { fail } from '../fail.mjs'
 import { generateReportData } from '../../../src/report/render'
 import type {ReportData} from '../../../src/report/sections'
 import {writeFile} from 'node:fs/promises'
-async function writeViewerData(path: string,data: ReportData,title?:string) {
+/** Writes the report viewer's data files next to the given results path, creating folders as needed. */
+async function writeViewerData(path: string,data: ReportData,title?:string): Promise<void> {
   for(const [file,body] of Object.entries(generateReportData(data,title))) {
-    const target=join(dirname(path),file);await mkdir(dirname(target),{recursive:true});await writeFile(target,body)
+    const target=join(dirname(path),file)
+    await mkdir(dirname(target),{recursive:true})
+    await writeFile(target,body)
   }
 }
 import { simulationSpiceOptions } from '../../../src/simulation'
@@ -66,24 +69,50 @@ export interface ComparisonInput {
   probe: Probe
   eye: Eye
 }
+/** Which levels a neighbor's traffic takes inside a time window. */
+interface StimulusActivity { behavior: 'switching' | 'constant'; levels: number[] }
+/** A stimulus with defaults filled in and its bits normalized, as compared across cases. */
+type Traffic = Omit<Stimulus, 'inverted' | 'transmission_pattern'> & {
+  inverted: boolean
+  transmission_pattern: Omit<Stimulus['transmission_pattern'], 'bits'> & { bits: string }
+}
+/** Everything that must match between cases for a fair quiet-versus-switching comparison. */
+interface ComparisonIdentity {
+  network: Record<string, string>
+  models: Array<Omit<Assembly, 'metadata'> & { metadata: Omit<IbisConversionMetadata, 'pins'> & { pins: Array<Omit<IbisConversionMetadata['pins'][number], 'stimulusHash'>> } }>
+  solverOptions: ReturnType<typeof simulationSpiceOptions>
+  probe: { signal: string; reference: string | null }
+  timing: number[]
+  fixedTraffic: Traffic[]
+}
+/** A selected neighbor lane with its activity over the whole run and inside the eye gate. */
+interface NeighborActivity { from: string; to: string; wholeRun: StimulusActivity; gate: StimulusActivity }
+/** One switching case paired with the single quiet case it is compared against. */
+interface ComparisonPair { quietIndex: number; activeIndex: number; quiet: string; active: string }
+/** Summary of the switching-minus-quiet waveform over the gate. */
+interface WaveformDifference { peakAbsoluteV: number; peakTimeSeconds: number; minimumV: number; maximumV: number; timeRmsV: number; samples: number }
+/** Serializes with object keys sorted, so equal values compare equal regardless of key order. */
 const canonical = (value: unknown): string => JSON.stringify(value, (_key, item) =>
   item && typeof item === 'object' && !Array.isArray(item)
     ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b))) : item)
-const traffic = ({ source_port_id, bit_duration_ms, start_time_ms, initial_state, inverted = false, transmission_pattern }: Stimulus) =>
+/** Normalizes a stimulus (default inversion, validated bits) so identical traffic serializes identically. */
+const traffic = ({ source_port_id, bit_duration_ms, start_time_ms, initial_state, inverted = false, transmission_pattern }: Stimulus): Traffic =>
   ({ source_port_id, bit_duration_ms, start_time_ms, initial_state, inverted, transmission_pattern: { ...transmission_pattern, bits: transmittedBits(transmission_pattern?.bits, 'comparison_traffic' as never) } })
 
 /** Actual declared levels in the gate; quiet cases also include their initial level. */
-export function stimulusActivity(stimulus: Stimulus, startSeconds: number, endSeconds: number) {
+export function stimulusActivity(stimulus: Stimulus, startSeconds: number, endSeconds: number): StimulusActivity {
   const { transmission_pattern, initial_state, inverted } = stimulus
   const bits = transmittedBits(transmission_pattern?.bits, 'comparison_traffic' as never)
-  const ui = stimulus.bit_duration_ms / 1000, start = stimulus.start_time_ms / 1000
+  const ui = stimulus.bit_duration_ms / 1000
+  const start = stimulus.start_time_ms / 1000
   if (!Number.isFinite(ui) || ui <= 0 || !Number.isFinite(start) || start < 0 ||
       !Number.isFinite(startSeconds) || !Number.isFinite(endSeconds) || endSeconds <= startSeconds ||
       transmission_pattern.transmission_type !== 'bits' || typeof transmission_pattern.repeat !== 'boolean' || ![0, 1].includes(initial_state))
     fail('comparison_traffic', 'Finite timing and explicit binary neighbor traffic required')
   const levels = new Set<number>()
   if (startSeconds <= start) levels.add(initial_state ^ Number(inverted ?? false))
-  const first = Math.max(0, Math.floor((startSeconds - start) / ui)), last = Math.ceil((endSeconds - start) / ui) - 1
+  const first = Math.max(0, Math.floor((startSeconds - start) / ui))
+  const last = Math.ceil((endSeconds - start) / ui) - 1
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last)) fail('comparison_traffic', 'Gate bit indices must be safe integers')
   if (!transmission_pattern.repeat && last >= bits.length) fail('comparison_traffic', 'Neighbor traffic does not cover the gate')
   for (let offset = 0; offset < Math.min(bits.length, last - first + 1); offset++)
@@ -92,7 +121,7 @@ export function stimulusActivity(stimulus: Stimulus, startSeconds: number, endSe
 }
 
 /** Compare the same exported network; only selected neighbors' traffic may change. */
-export function comparisonIdentity({ network, geometry, plan, assembly, probe, eye }: ComparisonInput) {
+export function comparisonIdentity({ network, geometry, plan, assembly, probe, eye }: ComparisonInput): ComparisonIdentity {
   if (probe.referenceNode !== '0') fail('comparison_probe', 'Controlled neighbor comparison requires a ground-referenced victim probe')
   if (geometry.mappings.filter(lane => lane.to === probe.signalSourceId).length !== 1)
     fail('comparison_probe', 'Victim probe must observe exactly one selected channel receiver')
@@ -101,7 +130,8 @@ export function comparisonIdentity({ network, geometry, plan, assembly, probe, e
   const neighborPorts = new Set(neighbors.map(lane => lane.from))
   const pins = assembly.flatMap(model => model.metadata.pins)
   for (const lane of geometry.mappings) {
-    const driver = pins.filter(pin => pin.port === lane.from), receiver = pins.filter(pin => pin.port === lane.to)
+    const driver = pins.filter(pin => pin.port === lane.from)
+    const receiver = pins.filter(pin => pin.port === lane.to)
     if (driver.length !== 1 || driver[0].runState.mode !== 'output' || !driver[0].runState.enabled ||
         receiver.length !== 1 || receiver[0].runState.mode !== 'input' ||
         plan.stimuli.filter(stimulus => stimulus.source_port_id === lane.from).length !== 1)
@@ -121,13 +151,15 @@ export function comparisonIdentity({ network, geometry, plan, assembly, probe, e
   }
 }
 
-export function assertComparable(identities: unknown[]) {
+/** Fails unless there are at least two cases and all their comparison identities are identical. */
+export function assertComparable(identities: unknown[]): void {
   if (identities.length < 2) fail('comparison_empty', 'At least two completed experiments required')
   if (identities.some(identity => canonical(identity) !== canonical(identities[0])))
     fail('comparison_fairness', 'Cases must have identical exported geometry/network, vendor models, buffer states, references, victim traffic and simulation/eye timing')
 }
 
-function neighborsFor({ geometry, plan, probe, eye }: ComparisonInput) {
+/** The non-victim lanes of a case with their traffic activity over the whole run and inside the eye gate. */
+function neighborsFor({ geometry, plan, probe, eye }: ComparisonInput): NeighborActivity[] {
   return geometry.mappings.filter(lane => lane.to !== probe.signalSourceId).map(lane => {
     const stimulus = plan.stimuli.find(item => item.source_port_id === lane.from)!
     return { ...lane, wholeRun: stimulusActivity(stimulus, 0, plan.durationSeconds),
@@ -135,10 +167,15 @@ function neighborsFor({ geometry, plan, probe, eye }: ComparisonInput) {
   })
 }
 
-export function comparisonPairs(cases: Array<{ label: string; neighbors: ReturnType<typeof neighborsFor> }>) {
+/**
+ * Pairs each switching case with the one fully quiet case. Fails unless exactly one case is quiet,
+ * every other case switches inside the gate, and quiet neighbors keep their original level.
+ */
+export function comparisonPairs(cases: Array<{ label: string; neighbors: ReturnType<typeof neighborsFor> }>): ComparisonPair[] {
   const quiet = cases.flatMap((run, i) => run.neighbors.length && run.neighbors.every(pin => pin.wholeRun.behavior === 'constant') ? [i] : [])
   if (quiet.length !== 1 || cases.length < 2) fail('comparison_case', 'One fully quiet case and at least one switching case required')
-  const quietIndex = quiet[0], reference = cases[quietIndex].neighbors
+  const quietIndex = quiet[0]
+  const reference = cases[quietIndex].neighbors
   return cases.flatMap((run, activeIndex) => {
     if (activeIndex === quietIndex) return []
     if (!run.neighbors.some(pin => pin.gate.behavior === 'switching'))
@@ -152,9 +189,13 @@ export function comparisonPairs(cases: Array<{ label: string; neighbors: ReturnT
   })
 }
 
+/**
+ * Peak, range and time-RMS of active minus quiet over the gate, using piecewise-linear interpolation
+ * on the union of both time axes. Rejects bad samples and gates outside the recorded data.
+ */
 export function waveformDifference({ quiet, active, quietColumn, activeColumn, startSeconds, endSeconds }: {
   quiet: number[][]; active: number[][]; quietColumn: number; activeColumn: number; startSeconds: number; endSeconds: number
-}) {
+}): WaveformDifference {
   if (!Number.isFinite(startSeconds) || !Number.isFinite(endSeconds) || endSeconds <= startSeconds)
     fail('comparison_gate', 'Difference requires a nonempty finite gate')
   for (const [rows, column] of [[quiet, quietColumn], [active, activeColumn]] as const) {
@@ -166,17 +207,29 @@ export function waveformDifference({ quiet, active, quietColumn, activeColumn, s
   }
   const times = [...new Set([startSeconds, endSeconds, ...quiet.map(row => row[0]), ...active.map(row => row[0])])]
     .filter(time => time >= startSeconds && time <= endSeconds).sort((a, b) => a - b)
-  let qi = 0, ai = 0, peakAbsoluteV = 0, peakTimeSeconds = startSeconds, integral = 0
-  let minimumV = Infinity, maximumV = -Infinity, previous: { time: number; value: number } | undefined
-  const interpolate = (rows: number[][], column: number, i: number, time: number) =>
+  let qi = 0
+  let ai = 0
+  let peakAbsoluteV = 0
+  let peakTimeSeconds = startSeconds
+  let integral = 0
+  let minimumV = Infinity
+  let maximumV = -Infinity
+  let previous: { time: number; value: number } | undefined
+  /** Linear interpolation of one column between row i and row i + 1 at the given time. */
+  const interpolate = (rows: number[][], column: number, i: number, time: number): number =>
     rows[i][column] + (rows[i + 1][column] - rows[i][column]) * (time - rows[i][0]) / (rows[i + 1][0] - rows[i][0])
   for (const time of times) {
     while (qi < quiet.length - 2 && quiet[qi + 1][0] < time) qi++
     while (ai < active.length - 2 && active[ai + 1][0] < time) ai++
     const value = interpolate(active, activeColumn, ai, time) - interpolate(quiet, quietColumn, qi, time)
-    if (Math.abs(value) > peakAbsoluteV) { peakAbsoluteV = Math.abs(value); peakTimeSeconds = time }
+    if (Math.abs(value) > peakAbsoluteV) {
+      peakAbsoluteV = Math.abs(value)
+      peakTimeSeconds = time
+    }
     if (previous) integral += (time - previous.time) * (previous.value ** 2 + previous.value * value + value ** 2) / 3
-    minimumV = Math.min(minimumV, value); maximumV = Math.max(maximumV, value); previous = { time, value }
+    minimumV = Math.min(minimumV, value)
+    maximumV = Math.max(maximumV, value)
+    previous = { time, value }
   }
   return { peakAbsoluteV, peakTimeSeconds, minimumV, maximumV, timeRmsV: Math.sqrt(integral / (endSeconds - startSeconds)), samples: times.length }
 }
@@ -191,24 +244,33 @@ interface Series {
   probe: Probe; eye: Eye; identity: ReturnType<typeof comparisonIdentity>; neighbors: ReturnType<typeof neighborsFor>
 }
 
+/**
+ * Loads completed runs, checks every artifact against its receipt, and writes comparison.json plus a
+ * viewer page of the quiet-versus-switching differences for the named victim probe.
+ */
 export async function compareRuns({ directories, outputDir, probeName }: {
   directories: string[]; outputDir: string; probeName: string
-}) {
+}): Promise<{ directory: string; manifest: string; changes: Array<ComparisonPair & WaveformDifference & { startSeconds: number; endSeconds: number }> }> {
   if (!directories.length || !probeName) fail('comparison_input', 'Provide a completed run directory and --probe NAME')
-  const series: Series[] = [], waveforms: number[][][] = [], viewerRuns: ReportRun[] = []
+  const series: Series[] = []
+  const waveforms: number[][][] = []
+  const viewerRuns: ReportRun[] = []
   const limitations = new Set<string>()
   let context: ReportContext | undefined
   for (const directory of directories) {
-    const root = resolve(directory), receiptBytes = await readFile(join(root, 'receipt.json'))
+    const root = resolve(directory)
+    const receiptBytes = await readFile(join(root, 'receipt.json'))
     const receipt = JSON.parse(receiptBytes.toString()) as Receipt
     if (receipt.status !== 'executed' || !receipt.experiments?.length) fail('comparison_run', 'Completed native general run required')
-    const artifact = async (relative: string) => {
+    /** Reads a run artifact, refusing paths that escape the run and bytes that differ from the receipt. */
+    const artifact = async (relative: string): Promise<Buffer> => {
       if (isAbsolute(relative) || relative.split(/[\\/]/).includes('..')) fail('comparison_provenance', 'Artifact paths must stay inside their run')
       const bytes = await readFile(join(root, relative))
       if (sha256(bytes) !== receipt.files[relative]) fail('comparison_provenance', `${relative} differs from the completed run receipt`)
       return bytes
     }
-    const network: Record<string, string> = {}, recorded: Record<string, Buffer> = {}
+    const network: Record<string, string> = {}
+    const recorded: Record<string, Buffer> = {}
     for (const path of ['inputs/circuit.json', 'inputs/modeling.json', 'geometry.json', 'electrical-node-map.json',
       'channel.cir', 'converter-runtime.json', 'tool-evidence.json', 'tool-build-receipt.json'])
       network[path] = sha256(recorded[path] = await artifact(path))
@@ -224,9 +286,11 @@ export async function compareRuns({ directories, outputDir, probeName }: {
     context ??= reportContext(JSON.parse(recorded['inputs/circuit.json'].toString()) as CircuitJson,
       geometry, JSON.parse(recorded['inputs/modeling.json'].toString()) as Modeling)
     for (const experiment of receipt.experiments) {
-      const matches = experiment.probes.filter(probe => probe.name === probeName), probe = matches[0]
+      const matches = experiment.probes.filter(probe => probe.name === probeName)
+      const probe = matches[0]
       if (matches.length !== 1) fail('comparison_probe', `${experiment.name}: exactly one probe named ${probeName} required`)
-      const eyes = experiment.eyes.filter(eye => eye.simulationVoltageProbeId === probe.simulationVoltageProbeId), eye = eyes[0]
+      const eyes = experiment.eyes.filter(eye => eye.simulationVoltageProbeId === probe.simulationVoltageProbeId)
+      const eye = eyes[0]
       if (eyes.length !== 1) fail('comparison_eye', `${experiment.name}: exactly one declared eye for the victim required`)
       const waveform = await artifact(join(experiment.directory, 'waveform.csv'))
       if (eye.sourceSha256 !== sha256(waveform)) fail('comparison_provenance', 'Eye is not bound to the recorded waveform')
@@ -249,7 +313,8 @@ export async function compareRuns({ directories, outputDir, probeName }: {
   }
   assertComparable(series.map(run => run.identity))
   const changes = comparisonPairs(series).map(pair => {
-    const startSeconds = series[pair.activeIndex].eye.startTimeSeconds, endSeconds = series[pair.activeIndex].eye.endTimeSeconds
+    const startSeconds = series[pair.activeIndex].eye.startTimeSeconds
+    const endSeconds = series[pair.activeIndex].eye.endTimeSeconds
     return { ...pair, startSeconds, endSeconds, ...waveformDifference({ quiet: waveforms[pair.quietIndex], active: waveforms[pair.activeIndex],
       quietColumn: series[pair.quietIndex].probe.column, activeColumn: series[pair.activeIndex].probe.column, startSeconds, endSeconds }) }
   })

@@ -38,7 +38,8 @@ const channelSchema = z.object({
   straightened_stage_profiles: z.record(profile).optional(),
 }).superRefine((channel, ctx) => {
   const extraction = channel.extraction
-  const issue = (path: string[], message: string) => ctx.addIssue({ code: 'custom', path, message })
+  /** Records one custom validation failure at `path` so zod reports it with the rest. */
+  const issue = (path: string[], message: string): void => ctx.addIssue({ code: 'custom', path, message })
   if (extraction.minimum_frequency_hz > extraction.model_frequency_hz || extraction.model_frequency_hz > extraction.maximum_frequency_hz)
     issue(['extraction'], 'Require minimum_frequency_hz <= model_frequency_hz <= maximum_frequency_hz')
   if (extraction.refinement_filaments <= extraction.filaments)
@@ -49,6 +50,7 @@ const channelSchema = z.object({
     issue(['extraction', 'ground_mesh_size_mm'], 'Required for routed-copper')
 })
 
+/** JSON with object keys sorted, so two channels compare equal regardless of key order. */
 const canonical = (value: unknown): string => JSON.stringify(value, (_, item) =>
   item && typeof item === 'object' && !Array.isArray(item)
     ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b))) : item)
@@ -74,7 +76,8 @@ export function modelingFromCircuitJson(circuitJson: CircuitJson): PipelineModel
   })
   if (channels.some(channel => canonical(channel) !== canonical(channels[0])))
     fail('pcb_spice_channel', 'All pcb_spice transient experiments must declare deep-equal pcb_spice_channel values for shared extraction')
-  const channel = channels[0], extraction = channel.extraction
+  const channel = channels[0]
+  const extraction = channel.extraction
   const modeling: PipelineModeling = {
     reduction: channel.reduction, sections: channel.sections,
     lanes: channel.lanes.map(lane => ({ port: lane.name, from: { sourcePortId: lane.driver_source_port_id }, to: { sourcePortId: lane.receiver_source_port_id } })),

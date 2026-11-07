@@ -41,7 +41,10 @@ export function auditGroundCopper(circuit, modeling, geometry) {
   const pours = circuit.filter(record => record.type === 'pcb_copper_pour' && connected.has(record.source_net_id))
   assert.ok(pours.length > 0, 'Physical copper on the inferred ground net')
   const ring = points => {
-    const tokens = points.map(point => point.map(value => { assert.ok(Number.isFinite(value)); return value.toPrecision(15) }).join(','))
+    const tokens = points.map(point => point.map(value => {
+      assert.ok(Number.isFinite(value))
+      return value.toPrecision(15)
+    }).join(','))
     const rotations = values => values.map((_, i) => [...values.slice(i), ...values.slice(0, i)].join(';'))
     return [...rotations(tokens), ...rotations([...tokens].reverse())].sort()[0]
   }
@@ -68,7 +71,8 @@ export function auditGroundCopper(circuit, modeling, geometry) {
       const stacks = circuit.filter(record => record.type === 'pcb_stackup')
       assert.equal(stacks.length, 1, 'One physical Circuit JSON stackup')
       const layers = stacks[0].layers.filter(layer => layer.layer_type !== 'soldermask').slice().reverse()
-      let z = -layers[0].thickness, found = false
+      let z = -layers[0].thickness
+      let found = false
       for (const layer of layers) {
         if (layer.layer_type === 'copper' && layer.layer === pour.layer) {
           close(pour.zMinMm, z, 'Ground copper bottom from Circuit JSON stackup')
@@ -84,7 +88,8 @@ export function auditGroundCopper(circuit, modeling, geometry) {
 }
 
 export async function auditRun(projectRoot, directory, { verifyLiveSources = true } = {}) {
-  const root = resolve(projectRoot), out = resolve(directory)
+  const root = resolve(projectRoot)
+  const out = resolve(directory)
   const receipt = await json(join(out, 'receipt.json'))
   assert.equal(receipt.status, 'executed')
   assert.ok(receipt.schemaVersion >= 3, 'General experiment receipt, not legacy clock-only receipt')
@@ -312,7 +317,8 @@ export async function auditRun(projectRoot, directory, { verifyLiveSources = tru
 
 export async function compareRuns(a, b) {
   assert.notEqual(resolve(a), resolve(b))
-  const left = await json(join(a, 'receipt.json')), right = await json(join(b, 'receipt.json'))
+  const left = await json(join(a, 'receipt.json'))
+  const right = await json(join(b, 'receipt.json'))
   assert.equal(left.execution.solverResultCache, false)
   assert.equal(right.execution.solverResultCache, false)
   const paths = Object.keys(left.files).filter(path => /\.(?:cir|lib|csv|png|svg|mat)$/.test(path) || /(?:circuit-results|geometry|extraction|eye-data)\.json$/.test(path) || path === 'inputs/circuit.json')

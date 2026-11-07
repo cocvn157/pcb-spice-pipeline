@@ -9,8 +9,17 @@ import { routedCopperGeometry } from './routed'
 import { groundPourLayers, measuredLaneSpacingMm, stackupStageReturn } from './returns'
 import type { BoardModeling as Modeling, Geometry, GeometryCell, LaneMapping, ResolvedModeling, RouteStage, RoutedPoint } from './types'
 
-const positive=(v: unknown,label: string): number=>{if(typeof v!=='number'||!Number.isFinite(v)||v<=0) fail('modeling_input',`${label} must be a positive number`);return v}
-const finite=(v: unknown,label: string): number=>{if(typeof v!=='number'||!Number.isFinite(v)) fail('modeling_input',`${label} must be explicit and finite`);return v}
+/** Returns `v` when it is a positive finite number; otherwise fails 'modeling_input' naming `label`. */
+const positive=(v: unknown,label: string): number=>{
+  if(typeof v!=='number'||!Number.isFinite(v)||v<=0) fail('modeling_input',`${label} must be a positive number`)
+  return v
+}
+/** Returns `v` when it is a finite number; otherwise fails 'modeling_input' naming `label`. */
+const finite=(v: unknown,label: string): number=>{
+  if(typeof v!=='number'||!Number.isFinite(v)) fail('modeling_input',`${label} must be explicit and finite`)
+  return v
+}
+/** Checks every modeling field the reductions rely on before any geometry is built, failing with the matching board code. */
 export function validateModeling(m: Modeling): void {
   if(!['straightened-stages','routed-copper'].includes(m.reduction)) fail('reduction','Select straightened-stages or routed-copper')
   if(!Array.isArray(m.lanes)||![1,2,3].includes(m.lanes.length)) fail('lanes','One to three explicit source/receiver lanes are supported')
@@ -21,10 +30,12 @@ export function validateModeling(m: Modeling): void {
     positive(m.extraction?.groundMeshMm,'extraction.groundMeshMm')
   }
   for(const [name,p] of Object.entries(m.reduction==='routed-copper'?{}:m.profiles??{})) {
-    positive(p.spacingMm,`${name} spacingMm`);positive(p.relativePermittivity,`${name} relativePermittivity`)
+    positive(p.spacingMm,`${name} spacingMm`)
+    positive(p.relativePermittivity,`${name} relativePermittivity`)
     if(!p.return) fail('return_geometry',`${name}: explicit finite return required`)
     for(const key of ['widthMm','thicknessMm','lengthFactor'] as const) positive(p.return[key],`${name}.return.${key}`)
-    finite(p.return.centerYMm,`${name}.return.centerYMm`);finite(p.return.centerZMm,`${name}.return.centerZMm`)
+    finite(p.return.centerYMm,`${name}.return.centerYMm`)
+    finite(p.return.centerZMm,`${name}.return.centerZMm`)
   }
   if(!m.extraction) fail('extraction','Explicit mesh/frequency/model settings required')
   for(const key of ['minimumHz','maximumHz','modelHz','filaments','refinementFilaments','convergenceTolerance','capTolerance','maxPanelLengthMm','reciprocityTolerance','dcResistanceTolerance'] as const) positive(m.extraction[key],`extraction.${key}`)
@@ -32,6 +43,7 @@ export function validateModeling(m: Modeling): void {
   if(!Number.isInteger(m.extraction.refinementFilaments)||m.extraction.refinementFilaments<=m.extraction.filaments) fail('extraction','Integer refinementFilaments must exceed filaments')
   if(!Number.isInteger(m.sections)||m.sections<1||m.sections>128) fail('sections','sections must be an integer 1..128')
 }
+/** Resolves each lane to its routed PCB trace and reduces the routes to geometry cells (straightened stages) or routed copper. */
 export function geometryFromCircuitJson(cj: CircuitJson,modeling: Modeling): Geometry {
   if(!Array.isArray(cj)) fail('circuit_json','Expected a Circuit JSON element array, not a mesh-preparation object')
   const stackup = stackupFromCircuitJson(cj)
@@ -40,12 +52,16 @@ export function geometryFromCircuitJson(cj: CircuitJson,modeling: Modeling): Geo
   const m: ResolvedModeling = {...modeling, stackup: stackup.copperLayers, conductivitySm: defaultCopperConductivitySm,
     relativePermittivity: modeling.relativePermittivity ?? stackup.relativePermittivity, viaPlatingMm: modeling.viaPlatingMm ?? stackup.viaPlatingMm}
   validateModeling(m)
-  const routes: RouteStage[][]=[],mappings: LaneMapping[]=[]
-  const selectedTraces=new Set<string>(),selectedPorts=new Set<string>()
+  const routes: RouteStage[][]=[]
+  const mappings: LaneMapping[]=[]
+  const selectedTraces=new Set<string>()
+  const selectedPorts=new Set<string>()
   for(const lane of m.lanes) {
-    const from=selectPort(cj,lane.from),to=selectPort(cj,lane.to)
+    const from=selectPort(cj,lane.from)
+    const to=selectPort(cj,lane.to)
     if(from.source_port_id===to.source_port_id||[from.source_port_id,to.source_port_id].some(id=>selectedPorts.has(id))) fail('pin_mapping',`${lane.port}: selected lanes require distinct physical source and receiver ports`)
-    selectedPorts.add(from.source_port_id);selectedPorts.add(to.source_port_id)
+    selectedPorts.add(from.source_port_id)
+    selectedPorts.add(to.source_port_id)
     const sources=cj.filter(e=>e.type==='source_trace').filter(e=>(lane.sourceTraceId?e.source_trace_id===lane.sourceTraceId:e.connected_source_port_ids?.includes(from.source_port_id)&&e.connected_source_port_ids?.includes(to.source_port_id)))
     if(sources.length!==1) fail('route_selection',`${lane.port}: expected one source trace; specify sourceTraceId`)
     const src=sources[0]
@@ -59,7 +75,8 @@ export function geometryFromCircuitJson(cj: CircuitJson,modeling: Modeling): Geo
     if(!Array.isArray(original)||original.length<2) fail('empty_route',`${lane.port}: at least two routed vertices required`)
     let route: RoutedPoint[]=original.map((p,i)=>{
       if(p.route_type!=='wire'&&p.route_type!=='via') fail('route_type','Only wire/via routed primitives supported')
-      finite(p.x,`${lane.port} route[${i}].x`);finite(p.y,`${lane.port} route[${i}].y`)
+      finite(p.x,`${lane.port} route[${i}].x`)
+      finite(p.y,`${lane.port} route[${i}].y`)
       if(p.route_type==='wire') {
         positive(p.width,`${lane.port} route[${i}].width`)
         if(p.start_width!==undefined||p.end_width!==undefined||p.width_interpolation_mode!==undefined) fail('varying_width','Tapered routes are not supported by the straightened-stage reduction')
@@ -72,8 +89,12 @@ export function geometryFromCircuitJson(cj: CircuitJson,modeling: Modeling): Geo
       if(matches.length!==1) fail('pin_mapping',`${lane.port}: expected one PCB port for ${p.source_port_id}, got ${matches.length}`)
       return matches[0]
     })
-    for(const p of ports) {finite(p.x,`${p.pcb_port_id}.x`);finite(p.y,`${p.pcb_port_id}.y`)}
-    const matches=(a: { x: number; y: number },p: { x: number; y: number })=>Math.hypot(a.x-p.x,a.y-p.y)<1e-5
+    for(const p of ports) {
+      finite(p.x,`${p.pcb_port_id}.x`)
+      finite(p.y,`${p.pcb_port_id}.y`)
+    }
+    /** True when a route point sits on a port position (within 1e-5 mm). */
+    const matches=(a: { x: number; y: number },p: { x: number; y: number }): boolean=>Math.hypot(a.x-p.x,a.y-p.y)<1e-5
     if(matches(route[0],ports[1])&&matches(route[route.length-1],ports[0])) route=[...route].reverse().map(p=>p.route_type==='via'?{...p,from_layer:p.to_layer,to_layer:p.from_layer}:p)
     if(!matches(route[0],ports[0])||!matches(route[route.length-1],ports[1])) fail('endpoint_position',`${lane.port}: routed endpoints do not match selected physical source/receiver ports`)
     for(const [point,port] of [[route[0],ports[0]],[route[route.length-1],ports[1]]] as const) {
@@ -81,16 +102,24 @@ export function geometryFromCircuitJson(cj: CircuitJson,modeling: Modeling): Geo
       for(const key of ['start_pcb_port_id','end_pcb_port_id'] as const) if(point.route_type==='wire'&&point[key]&&point[key]!==port.pcb_port_id) fail('stale_endpoint',`${lane.port}: ${key}=${point[key]} disagrees with ${port.pcb_port_id}; repair source metadata explicitly`)
     }
     const stages: RouteStage[]=[]
-    const layer=(n: string)=>{const l=m.stackup.find(l=>l.name===n);if(!l) fail('stackup',`No copper z range for ${n}`);return l}
+    /** Looks up the stackup copper layer named `n`, failing 'stackup' when it is missing. */
+    const layer=(n: string): ResolvedModeling['stackup'][number]=>{
+      const l=m.stackup.find(l=>l.name===n)
+      if(!l) fail('stackup',`No copper z range for ${n}`)
+      return l
+    }
     for(let i=1;i<route.length;i++) {
-      const a=route[i-1],b=route[i]
+      const a=route[i-1]
+      const b=route[i]
       if(!['wire','via'].includes(a.route_type)||!['wire','via'].includes(b.route_type)) fail('route_type','Only wire/via routed primitives supported')
       const distance=Math.hypot(b.x-a.x,b.y-a.y)
       if(b.route_type==='via') {
         if(distance>1e-5) fail('via_geometry','Via must follow a co-located wire vertex')
         if(a.route_type!=='wire'||a.layer!==b.from_layer||b.from_layer===b.to_layer) fail('via_geometry','Via must continue preceding wire layer and change layer')
-        const la=layer(b.from_layer),lb=layer(b.to_layer)
-        const plating=positive(m.viaPlatingMm,'viaPlatingMm (not recorded in ordinary Circuit JSON)'),width=positive(m.viaEquivalentWidthMm,'viaEquivalentWidthMm')
+        const la=layer(b.from_layer)
+        const lb=layer(b.to_layer)
+        const plating=positive(m.viaPlatingMm,'viaPlatingMm (not recorded in ordinary Circuit JSON)')
+        const width=positive(m.viaEquivalentWidthMm,'viaEquivalentWidthMm')
         if(!m.omitThroughViaStubs) fail('via_stub','This reduction requires explicit omitThroughViaStubs=true')
         const hole=positive(b.hole_diameter,'hole_diameter')
         const area=Math.PI*((hole/2+plating)**2-(hole/2)**2)
@@ -100,7 +129,8 @@ export function geometryFromCircuitJson(cj: CircuitJson,modeling: Modeling): Geo
       } else if(distance>1e-10) {
         const layerName=a.route_type==='via'?a.to_layer:a.layer
         if(b.layer!==layerName) fail('layer_transition','Layer change requires explicit via')
-        const l=layer(layerName), width=positive(b.width,'route wire width')
+        const l=layer(layerName)
+        const width=positive(b.width,'route wire width')
         if(a.route_type==='wire'&&a.width!==b.width) fail('varying_width','Width transitions require explicit supported stage reduction')
         const last=stages.at(-1)
         if(last?.kind==='wire'&&last.profile===layerName&&last.widthMm===width) last.lengthMm+=distance
@@ -116,9 +146,12 @@ export function geometryFromCircuitJson(cj: CircuitJson,modeling: Modeling): Geo
   if(m.reduction==='routed-copper') return {...routedCopperGeometry(cj,m,mappings),stackup}
   if(routes.some(route=>route.length!==routes[0].length||route.some((s,i)=>s.profile!==routes[0][i].profile))) fail('route_topology','Selected routes must have identical ordered layer/via stage topology')
   let grounds: Set<string>|undefined
-  const groundLayers=()=>grounds??=groundPourLayers(cj,m.channelReference?selectPort(cj,m.channelReference).source_port_id:undefined)
+  /** Ground-pour layers for derived returns, computed once on first use. */
+  const groundLayers=(): Set<string>=>grounds??=groundPourLayers(cj,m.channelReference?selectPort(cj,m.channelReference).source_port_id:undefined)
   const cells: GeometryCell[]=routes[0].map((_,i)=>{
-    const signals=routes.map(r=>r[i]),name=signals[0].profile,profile=m.profiles?.[name]
+    const signals=routes.map(r=>r[i])
+    const name=signals[0].profile
+    const profile=m.profiles?.[name]
     // Without a declared profile, a wire stage returns in the adjacent ground
     // planes from pcb_stackup; via stages still need an explicit `via` profile.
     if(!profile&&signals[0].kind!=='wire') fail('return_geometry',`Missing ${name} return/material profile; via stages need an explicit straightened-stage profile`)

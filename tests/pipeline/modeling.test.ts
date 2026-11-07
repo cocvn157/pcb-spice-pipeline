@@ -17,11 +17,13 @@ const channel = {
   relative_permittivity: 4.2, via_plating_thickness_mm: .025, via_equivalent_width_mm: .15, omit_through_via_stubs: true,
   straightened_stage_profiles: { top: { spacing_mm: .3, relative_permittivity: 3.9, return: { width_mm: 2, thickness_mm: .035, length_factor: 1, center_y_mm: 0, center_z_mm: -.1 } } },
 }
-const experiment = (id: string, pcb_spice_channel: unknown = channel) => ({
+/** A pcb_spice transient experiment record carrying `pcb_spice_channel` (null leaves the field out). */
+const experiment = (id: string, pcb_spice_channel: unknown = channel): CircuitJson[number] => ({
   type: 'simulation_experiment', simulation_experiment_id: id, name: id, spice_engine: 'pcb_spice', experiment_type: 'spice_transient_analysis',
   ...(pcb_spice_channel === null ? {} : { pcb_spice_channel }),
 }) as unknown as CircuitJson[number]
-const rejects = (input: unknown, message: string) => assert.throws(() => modelingFromCircuitJson(input as CircuitJson), { code: 'pcb_spice_channel', message: `pcb_spice_channel: ${message}` })
+/** Asserts modelingFromCircuitJson fails with pcb_spice_channel and exactly this message. */
+const rejects = (input: unknown, message: string): void => assert.throws(() => modelingFromCircuitJson(input as CircuitJson), { code: 'pcb_spice_channel', message: `pcb_spice_channel: ${message}` })
 
 test('a declared pcb_spice_channel maps to the flat PipelineModeling', () => {
   const reordered = Object.fromEntries(Object.entries(channel).reverse())
@@ -51,7 +53,10 @@ test('runPipeline derives modeling first, so a missing channel fails before admi
   const { modeling, ...input } = inMemoryInput()
   void modeling
   let solverCalls = 0
-  await assert.rejects(runPipeline({ ...input, circuitJson: [...input.circuitJson, { type: 'not_a_record' }] as never, runSolver: async () => { solverCalls++; throw Error('unreachable') } } as never),
+  await assert.rejects(runPipeline({ ...input, circuitJson: [...input.circuitJson, { type: 'not_a_record' }] as never, runSolver: async () => {
+    solverCalls++
+    throw Error('unreachable')
+  } } as never),
     { code: 'pcb_spice_channel' })
   assert.equal(solverCalls, 0)
 })

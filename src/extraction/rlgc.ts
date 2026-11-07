@@ -6,8 +6,10 @@ import { scale, sum, type Matrix } from './linalg'
 /** One stage's loop matrices (spice.ts called this `ChannelMatrices`). */
 export interface StageMatrices { R: Matrix; L: Matrix; C: Matrix }
 
+/** Formats a value with 12 significant digits so the netlist text is stable across runs. */
 const num = (value: number): string => Number(value.toPrecision(12)).toString()
 
+/** Writes the RLGC channel as a SPICE subcircuit: each stage is split into equal pi sections with coupled R, L and C between signals. */
 export function channelSpice(extracted: readonly StageMatrices[], sections: number): string {
   if (!Number.isInteger(sections) || sections < 1 || sections > 128) fail('sections', 'sections must be an integer 1..128')
   if (!extracted.length || !extracted[0].R.length) fail('matrix_dimension', 'At least one extracted channel stage is required')
@@ -26,8 +28,12 @@ export function channelSpice(extracted: readonly StageMatrices[], sections: numb
   const lines = ['* Constant-frequency passive matrix pi channel; explicit reference terminal', `.subckt CHANNEL ${[...inputs, ...outputs, 'REF'].join(' ')}`]
   let global = 0
   for (const [stage, e] of extracted.entries()) for (let section = 0; section < sections; section++) {
-    const g = global++, R: Matrix = scale(e.R, 1 / sections), L: Matrix = scale(e.L, 1 / sections), C: Matrix = scale(e.C, 1 / sections)
-    const first = g === 0, last = stage === extracted.length - 1 && section === sections - 1
+    const g = global++
+    const R: Matrix = scale(e.R, 1 / sections)
+    const L: Matrix = scale(e.L, 1 / sections)
+    const C: Matrix = scale(e.C, 1 / sections)
+    const first = g === 0
+    const last = stage === extracted.length - 1 && section === sections - 1
     const before = inputs.map((input, i) => first ? input : `N${g}_${i}`)
     const after = outputs.map((output, i) => last ? output : `N${g + 1}_${i}`)
     for (let i = 0; i < n; i++) {

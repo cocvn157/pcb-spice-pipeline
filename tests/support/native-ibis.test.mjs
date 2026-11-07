@@ -3,7 +3,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {useNativeIbis} from './legacy/native-ibis.mjs'
 test('silently stripped native ibisModel and swapped terminal source-port IDs fail closed',()=>{
-  const cj=[],geometry={mappings:[{from:'d0',to:'r0'},{from:'d1',to:'r1'}]},modeling={lanes:[{port:'DQS'},{port:'DQSn'}]}
+  const cj=[]
+  const geometry={mappings:[{from:'d0',to:'r0'},{from:'d1',to:'r1'}]}
+  const modeling={lanes:[{port:'DQS'},{port:'DQSn'}]}
   const independent={driver:{source:'driver',spicePinMapping:{PAD0:'DQS',PAD1:'DQSn'}},receiver:{source:'receiver',spicePinMapping:{PAD0:'DQS',PAD1:'DQSn'}}}
   for(const role of ['d','r']) for(let i=0;i<2;i++) cj.push({type:'source_port',source_port_id:role+i,source_component_id:role})
   assert.throws(()=>useNativeIbis(cj,geometry,modeling,independent),/expected one native/)

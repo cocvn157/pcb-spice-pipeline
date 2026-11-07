@@ -4,7 +4,10 @@
 import { readdirSync, readFileSync, writeFileSync, existsSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 
-const walk = d => readdirSync(d).flatMap(n => { const p = join(d, n); return statSync(p).isDirectory() ? walk(p) : [p] })
+const walk = d => readdirSync(d).flatMap(n => {
+  const p = join(d, n)
+  return statSync(p).isDirectory() ? walk(p) : [p]
+})
 const SPEC = /((?:from|import)\s*\(?\s*)(['"])(\.\.?(?:\/[^'"\n]*)?)\2/g
 for (const file of walk('dist').filter(f => /\.(?:js|d\.ts)$/.test(f))) {
   const src = readFileSync(file, 'utf8')

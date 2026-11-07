@@ -28,8 +28,11 @@ export class Diagnostic extends Error {
   constructor(domain: DomainName, code: DiagnosticCode, text: string, init: DiagnosticInit = {}) {
     super(`${code}: ${text}`)
     this.name = 'Diagnostic'
-    this.domain = domain; this.code = code
-    this.subjects = init.subjects ?? []; this.artifacts = init.artifacts ?? []; this.hint = init.hint
+    this.domain = domain
+    this.code = code
+    this.subjects = init.subjects ?? []
+    this.artifacts = init.artifacts ?? []
+    this.hint = init.hint
   }
 }
 
@@ -41,5 +44,7 @@ export class Diagnostic extends Error {
 export function diagnostics<const D extends DomainName, const C extends readonly string[]>(domain: D, codes: C):
   (code: C[number] & DiagnosticCode, text: string, init?: DiagnosticInit) => never {
   void codes
-  return (code, text, init) => { throw new Diagnostic(domain, code, text, init) }
+  return (code, text, init) => {
+    throw new Diagnostic(domain, code, text, init)
+  }
 }

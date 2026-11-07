@@ -1,5 +1,6 @@
 import { Circuit, analog } from '@tscircuit/core'
 import React from 'react'
+import type { AnyCircuitElement } from 'circuit-json'
 import { modelingFromCircuitJson } from '../../src/pipeline'
 import { geometryFromCircuitJson } from '../../src/board'
 import { fastHenryDeck } from '../../src/extraction'
@@ -21,9 +22,11 @@ const channel = {
   via: { platingThickness: '.025mm', equivalentWidth: '.1mm', omitThroughViaStubs: true },
 }
 
-// Extraction-only reduction of the AM3352 DDR timeout. No vendor model or eye
-// result is needed to reproduce the process deadline before transient analysis.
-export default function NativeDdrTimeout() {
+/**
+ * Extraction-only reduction of the AM3352 DDR timeout. No vendor model or eye
+ * result is needed to reproduce the process deadline before transient analysis.
+ */
+export default function NativeDdrTimeout(): React.JSX.Element {
   return <board width={20} height={14} layers={4} thickness={1.6}
     fabricatorPreset="jlcpcb_standard" routeRemaining={false} schematicDisabled>
     {(['U1', 'U3'] as const).map((name, i) => <React.Fragment key={name}>
@@ -63,7 +66,8 @@ export default function NativeDdrTimeout() {
   </board>
 }
 
-export async function nativeDdrTimeout() {
+/** Renders the DDR timeout board and builds its refinement FastHenry deck, the step that hits the process deadline. */
+export async function nativeDdrTimeout(): Promise<{ records: AnyCircuitElement[]; deck: string }> {
   const circuit = new Circuit({ platform: { partsEngineDisabled: true } })
   circuit.add(<NativeDdrTimeout />)
   await circuit.renderUntilSettled()

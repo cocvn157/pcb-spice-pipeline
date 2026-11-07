@@ -5,6 +5,10 @@ import type { CircuitJson } from '../../src/board'
 import { fail } from './fail.mjs'
 import { subcircuitTree } from '../../src/board'
 
+/**
+ * Returns the rendered Circuit JSON. For an ImportedBoard, the native simulation records are remapped
+ * onto the saved board's ids so the original physical records are simulated unchanged.
+ */
 export function serializeSimulation(circuit: RootCircuit): CircuitJson {
   const nativeRecords = circuit.getCircuitJson()
   const errors = nativeRecords.filter(record => record.type.endsWith('_error'))
@@ -17,7 +21,8 @@ export function serializeSimulation(circuit: RootCircuit): CircuitJson {
   if (!imported.length) return circuit.getCircuitJson()
   if (imported.length !== 1 || boards.length !== 1)
     fail('tsx_board', 'One imported PCB per local simulation entry is supported')
-  const board = imported[0], records = board[importedBoardRecords]!
+  const board = imported[0]
+  const records = board[importedBoardRecords]!
   const declarations = board[importedBoardDeclarations]
   const allowed = new Set(['Group', 'IbisModel', 'AnalogTransientSimulation', 'AnalogDigitalStimulus', 'VoltageProbe', 'AnalogEyeDiagram', 'VoltageSource'])
   const physicalChild = declarations?.getDescendants().find(instance => !allowed.has(instance.componentName) && !(instance.parent?.componentName === 'VoltageSource' && ['Port', 'Trace'].includes(instance.componentName)))
@@ -31,8 +36,10 @@ export function serializeSimulation(circuit: RootCircuit): CircuitJson {
   type NativeSourceNetId = string
   type NativePhysicalId = NativeSourceComponentId | NativeSourcePortId | NativeSourceNetId
   const netIds = new Map<NativeSourceNetId, string>()
-  const componentIds = new Map<NativeSourceComponentId, string>(), portIds = new Map<NativeSourcePortId, string>()
+  const componentIds = new Map<NativeSourceComponentId, string>()
+  const portIds = new Map<NativeSourcePortId, string>()
   const ambiguousPortIds = new Set<NativeSourcePortId>()
+  /** The single element of a match list; fails when a reference matches zero or several physical elements. */
   const one = <T>(values: T[], label: string): T => {
     if (values.length !== 1) fail('tsx_reference', `${label}: expected one physical match, got ${values.length}`)
     return values[0]
@@ -76,7 +83,10 @@ export function serializeSimulation(circuit: RootCircuit): CircuitJson {
       // those unmapped; every pin referenced by simulation must map uniquely.
       if (matches.length !== 1 || !matches[0].source_port_id) continue
       const nativePortId = matches[0].source_port_id
-      if (portIds.has(nativePortId)) { portIds.delete(nativePortId); ambiguousPortIds.add(nativePortId) }
+      if (portIds.has(nativePortId)) {
+        portIds.delete(nativePortId)
+        ambiguousPortIds.add(nativePortId)
+      }
       if (!ambiguousPortIds.has(nativePortId)) portIds.set(nativePortId, String(port.source_port_id))
     }
   }
@@ -98,11 +108,13 @@ export function serializeSimulation(circuit: RootCircuit): CircuitJson {
     return [id, saved[0]!] as const
   })
   for (const [id, saved] of supplyBindings) portIds.set(id, saved)
+  /** The saved source_port with this id; fails when simulation references a pin the saved board lacks. */
   const originalPort = (id: unknown): SavedRecord => {
     const port = records.find(record => record.type === 'source_port' && record.source_port_id === id)
     if (!port) fail('tsx_reference', `Simulation references an unknown saved physical pin: ${id}`)
     return port
   }
+  /** The subcircuit a saved port belongs to, found via the port, its component or its group chain. */
   const portScope = (id: unknown): unknown => {
     const port = originalPort(id)
     if (port.subcircuit_id) return port.subcircuit_id
@@ -120,16 +132,19 @@ export function serializeSimulation(circuit: RootCircuit): CircuitJson {
     }
     return undefined
   }
-  const connectedPorts = (elements: readonly SavedRecord[], netId: unknown) => [...new Set(elements.filter(record => record.type === 'source_trace' && Array.isArray(record.connected_source_net_ids) && record.connected_source_net_ids.includes(netId)).flatMap(record => {
+  /** Distinct source port ids that traces in these records connect to the given net. */
+  const connectedPorts = (elements: readonly SavedRecord[], netId: unknown): unknown[] => [...new Set(elements.filter(record => record.type === 'source_trace' && Array.isArray(record.connected_source_net_ids) && record.connected_source_net_ids.includes(netId)).flatMap(record => {
     if (Array.isArray(record.connected_source_port_ids)) return record.connected_source_port_ids
     return []
   }))]
+  /** The saved source_net with this id; fails when simulation references a net the saved board lacks. */
   const originalNet = (id: unknown): SavedRecord => {
     const net = records.find(record => record.type === 'source_net' && record.source_net_id === id)
     if (!net) fail('tsx_reference', `Simulation references an unknown saved net: ${id}`)
     return net
   }
   const subcircuits = subcircuitTree(records)
+  /** The subcircuit a saved net lives in; fails if its pins reach outside its declared subcircuit. */
   const netScope = (id: unknown): unknown => {
     const net = originalNet(id)
     const scope = subcircuits.common(connectedPorts(records, id).map(portScope))
@@ -139,6 +154,7 @@ export function serializeSimulation(circuit: RootCircuit): CircuitJson {
     }
     return scope
   }
+  /** Maps a native net id to the saved net with the same name and the same saved pins, caching the result. */
   const mapNet = (id: string): string => {
     const cached = netIds.get(id)
     if (cached) return cached
@@ -151,7 +167,8 @@ export function serializeSimulation(circuit: RootCircuit): CircuitJson {
     netIds.set(id, String(net.source_net_id))
     return String(net.source_net_id)
   }
-  const remap = (value: unknown, field = ''): unknown => {
+  /** Rewrites native component, port and net ids anywhere inside a record to the saved board's ids, guided by field names. */
+  const remap = (value: unknown, field: string = ''): unknown => {
     if (Array.isArray(value)) return value.map(item => remap(item, /_source_(component|port)_ids$/.test(field) ? field.slice(0, -1) : field))
     if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => {
       let context = key
@@ -178,12 +195,19 @@ export function serializeSimulation(circuit: RootCircuit): CircuitJson {
     }
     if (record.type === 'simulation_voltage_probe') {
       let scope = portScope
-      let signal = record.signal_input_source_port_id, reference = record.reference_input_source_port_id
-      if (record.signal_input_source_net_id) { scope = netScope; signal = record.signal_input_source_net_id }
+      let signal = record.signal_input_source_port_id
+      let reference = record.reference_input_source_port_id
+      if (record.signal_input_source_net_id) {
+        scope = netScope
+        signal = record.signal_input_source_net_id
+      }
       const signalScope = scope(signal)
       let referenceScope: unknown
       if (reference) referenceScope = portScope(reference)
-      if (record.reference_input_source_net_id) { reference = record.reference_input_source_net_id; referenceScope = netScope(reference) }
+      if (record.reference_input_source_net_id) {
+        reference = record.reference_input_source_net_id
+        referenceScope = netScope(reference)
+      }
       record.subcircuit_id = reference ? subcircuits.common([signalScope, referenceScope]) : signalScope
     }
   }

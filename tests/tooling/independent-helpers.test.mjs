@@ -9,7 +9,8 @@ const stimulus = bits => ({ type: 'simulation_digital_stimulus', bit_duration_ms
 
 for (const bits of ['0011', [0, 0, 1, 1]]) {
   test(`independent audit expands canonical ${typeof bits === 'string' ? 'string' : 'array'} bits`, () => {
-    const record = stimulus(bits), before = structuredClone(record)
+    const record = stimulus(bits)
+    const before = structuredClone(record)
     const value = { initialState: 0, transitions: [{ time: .003, state: 1 }, { time: .005, state: 0 }], duration: .006 }
     assert.deepEqual(bitSchedule(record, 6), { ...value, sha256: sha256(JSON.stringify(value)), explicitRepeatedBits: true })
     assert.deepEqual(record, before)

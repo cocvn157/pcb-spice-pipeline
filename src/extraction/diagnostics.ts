@@ -8,4 +8,6 @@ const raise = diagnostics('extraction', [
 ] as const)
 export type ExtractionCode = Parameters<typeof raise>[0]
 /** Declared as a function so `never` narrows control flow at call sites. */
-export function fail(code: ExtractionCode, text: string, init?: DiagnosticInit): never { return raise(code, text, init) }
+export function fail(code: ExtractionCode, text: string, init?: DiagnosticInit): never {
+  return raise(code, text, init)
+}

@@ -10,8 +10,13 @@ export function relativeFile(path: string): string {
   return path
 }
 
+/**
+ * Admits the caller-supplied IBIS bytes for one model: checks the path, size, format and UTF-8 text,
+ * then records the SHA-256 evidence. Nothing is ever downloaded from the declared URL.
+ */
 export function loadModelSource(model: ModelSourceRequest, sources: IbisSources): LoadedModelSource {
-  const asset = model.ibis_model_asset, path = relativeFile(asset.project_relative_path)
+  const asset = model.ibis_model_asset
+  const path = relativeFile(asset.project_relative_path)
   if (!sources || !Object.hasOwn(sources, path)) fail('ibis_asset_missing', `Supply IBIS bytes for ${path} in ibisSources`)
   const source = sources[path]
   if (typeof source !== 'string' && !(source instanceof Uint8Array)) fail('ibis_asset', `${path}: expected a string or Uint8Array`)
@@ -20,6 +25,8 @@ export function loadModelSource(model: ModelSourceRequest, sources: IbisSources)
   if (bytes[0] === 0x50 && bytes[1] === 0x4b) fail('ibis_asset', 'IBIS asset must be a plain .ibs file; extract ZIP archives explicitly')
   const text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes)
   if (/^\s*(?:<!doctype\s+html|<html)\b/i.test(text)) fail('ibis_asset', 'IBIS asset contains HTML instead of model data')
-  const id = model.pipelineId, sourceSha256 = sha256(bytes), ibsFile = `inputs/ibis/${id}.ibs`
+  const id = model.pipelineId
+  const sourceSha256 = sha256(bytes)
+  const ibsFile = `inputs/ibis/${id}.ibs`
   return { text, bytes, evidence: { simulationIbisModelId: id, ibisModelAsset: asset, resolvedFrom: 'provided', ibsFile, sourceSha256, rawSourceFile: ibsFile, rawSourceSha256: sourceSha256 } }
 }

@@ -6,9 +6,11 @@ import { groundPlaneFixture, routedGroundPlaneFixture } from '../fixtures/ground
 import { nativeChannel, modeling as nativeModeling, curvedPoints } from '../fixtures/native-channel'
 import { viaInPad } from '../fixtures/via-in-pad'
 
-const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/${name}`, import.meta.url), 'utf8'))
+/** Parses a JSON fixture. Some hand-written fixtures are not schema-valid, so the result stays untyped JSON. */
+const read = (name: string): any => JSON.parse(readFileSync(new URL(`../fixtures/${name}`, import.meta.url), 'utf8'))
 export interface BoardCase { name: string; circuit: CircuitJson; modeling: Modeling }
 
+/** Every board fixture paired with its modeling, built fresh on each call so tests may mutate them. */
 export async function boardCases(): Promise<BoardCase[]> {
   const straight = { circuit: read('straight.circuit.json'), modeling: read('straight.modeling.json') }
   const am3352 = { circuit: read('am3352.circuit.json'), modeling: read('am3352.modeling.json') }

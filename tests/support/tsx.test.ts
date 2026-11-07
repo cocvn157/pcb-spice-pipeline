@@ -2,7 +2,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { createElement as h } from 'react'
+import { createElement as h, type ReactElement } from 'react'
 import { Circuit, analog } from '@tscircuit/core'
 import type { IbisModelDefinition } from '@tscircuit/props'
 import { ImportedBoard } from './tsx'
@@ -16,7 +16,8 @@ const model: IbisModelDefinition = {
   modelValueCorner: 'typical', includePackageParasitics: false,
   ibisPinNameToReferencePortLabels: { '1': { pullup: 'VCC', pulldown: 'GND', powerClamp: 'VCC', groundClamp: 'GND' } },
 }
-const declarations = (componentRef = '.U1') => [
+/** The native simulation declarations (IBIS model, transient, probe, stimulus, eye) for one chip, as TSX children. */
+const declarations = (componentRef: string = '.U1'): ReactElement[] => [
   h('ibismodel', { ...model, componentRef, key: 'model' }),
   h(analog.transientsimulation, { name: 'SI', duration: '100ns', timePerStep: '10ps', spiceEngine: 'pcb_spice',
     ibisPinStates: { '.U1 > .DATA': { isOutput: true, isOutputEnabled: true } }, key: 'transient' }),
@@ -25,13 +26,16 @@ const declarations = (componentRef = '.U1') => [
     transmittedData: { transmissionType: 'bits', bits: '0011', repeat: true }, key: 'stimulus' }),
   h(analog.eyediagram, { name: 'RX_EYE', simulationRef: '.SI', probeRef: '.RX', unitInterval: '2.5ns', timeOrigin: '0ns', startTime: '20ns', key: 'eye' }),
 ]
-const tree = () => h('board', { width: 10, height: 10, routingDisabled: true, schematicDisabled: true },
+/** A one-chip board with the standard simulation declarations, rendered as ordinary TSX. */
+const tree = (): ReactElement => h('board', { width: 10, height: 10, routingDisabled: true, schematicDisabled: true },
   h('chip', { name: 'U1', pinLabels: { pin1: 'DATA', pin2: 'GND', pin3: 'VCC' }, footprint: 'sot23' }), ...declarations())
 
 test('native core renders ordinary TSX simulation records without fetching a model or executing a solver', async () => {
   const circuit = new Circuit()
-  circuit.add(tree()); await circuit.renderUntilSettled()
-  const native = circuit.getCircuitJson(), records = serializeSimulation(circuit)
+  circuit.add(tree())
+  await circuit.renderUntilSettled()
+  const native = circuit.getCircuitJson()
+  const records = serializeSimulation(circuit)
   assert.deepEqual(records, native, 'ordinary TSX uses core output directly')
   for (const record of records) parseRecord(record)
   const modelRecord = records.find(e => e.type === 'simulation_ibis_model')!
@@ -59,7 +63,9 @@ test('native core renders ordinary TSX simulation records without fetching a mod
 })
 
 test('saved board bridge keeps original physical records and maps native declarations to original pins', async () => {
-  const source = new Circuit(); source.add(tree()); await source.renderUntilSettled()
+  const source = new Circuit()
+  source.add(tree())
+  await source.renderUntilSettled()
   const original = source.getCircuitJson().filter(record => !record.type.startsWith('simulation_')).map(record => {
     if (record.type === 'source_component') return { ...record, ftype: 'simple_crystal' }
     return record
@@ -89,7 +95,9 @@ test('saved board bridge keeps original physical records and maps native declara
 
 
 test('saved board bridge rejects a malformed native declaration alongside valid declarations', async () => {
-  const source = new Circuit(); source.add(tree()); await source.renderUntilSettled()
+  const source = new Circuit()
+  source.add(tree())
+  await source.renderUntilSettled()
   const original = source.getCircuitJson().filter(record => !record.type.startsWith('simulation_'))
   const circuit = new Circuit()
   circuit.add(h(ImportedBoard, { circuitJson: original }, ...declarations(),
@@ -99,7 +107,9 @@ test('saved board bridge rejects a malformed native declaration alongside valid 
 })
 
 test('saved board bridge rejects a native declaration with an unresolved physical selector', async () => {
-  const source = new Circuit(); source.add(tree()); await source.renderUntilSettled()
+  const source = new Circuit()
+  source.add(tree())
+  await source.renderUntilSettled()
   const original = source.getCircuitJson().filter(record => !record.type.startsWith('simulation_'))
   const circuit = new Circuit()
   circuit.add(h(ImportedBoard, { circuitJson: original }, ...declarations(),
@@ -122,7 +132,8 @@ test('saved board net probes retain their original net identity and scope', asyn
   const records = serializeSimulation(circuit)
   const probe = records.find(record => record.type === 'simulation_voltage_probe' && record.name === 'NET_RX')!
   const net = original.find(record => record.type === 'source_net')!
-  assert.equal(probe.type, 'simulation_voltage_probe'); assert.equal(net.type, 'source_net')
+  assert.equal(probe.type, 'simulation_voltage_probe')
+  assert.equal(net.type, 'source_net')
   if (probe.type !== 'simulation_voltage_probe' || net.type !== 'source_net') return
   assert.equal(probe.signal_input_source_net_id, net.source_net_id)
   assert.equal(probe.subcircuit_id, net.subcircuit_id)
@@ -131,7 +142,8 @@ test('saved board net probes retain their original net identity and scope', asyn
 test('a channel between sibling saved subcircuits is scoped to their nearest common subcircuit', async () => {
   // DDR boards keep the processor and memory in sibling subcircuits; the
   // write channel runs from one to the other.
-  const chip = (name: string) => h('chip', { name, pinLabels: { pin1: 'DATA', pin2: 'GND', pin3: 'VCC' }, footprint: 'sot23' })
+  /** A three-pin SOT-23 chip with DATA, GND and VCC pins. */
+  const chip = (name: string): ReactElement => h('chip', { name, pinLabels: { pin1: 'DATA', pin2: 'GND', pin3: 'VCC' }, footprint: 'sot23' })
   const source = new Circuit()
   source.add(h('board', { width: 20, height: 10, routingDisabled: true, schematicDisabled: true },
     h('group', { name: 'CPU', subcircuit: true, pcbX: -4 }, chip('U1')),
@@ -139,7 +151,8 @@ test('a channel between sibling saved subcircuits is scoped to their nearest com
     h('trace', { from: '.CPU > .U1 > .DATA', to: '.RAM > .U2 > .DATA' })))
   await source.renderUntilSettled()
   const original = source.getCircuitJson()
-  const scopeOf = (name: string) => {
+  /** The subcircuit id of the saved source group with this name. */
+  const scopeOf = (name: string): string | undefined => {
     const group = original.find(record => record.type === 'source_group' && record.name === name)!
     assert.equal(group.type, 'source_group')
     return group.type === 'source_group' ? group.subcircuit_id : undefined
@@ -162,7 +175,8 @@ test('a channel between sibling saved subcircuits is scoped to their nearest com
   assert.equal(experiment.type, 'simulation_experiment')
   if (experiment.type !== 'simulation_experiment') return
   assert.equal(experiment.subcircuit_id, board.subcircuit_id)
-  const probeScope = (name: string) => {
+  /** The subcircuit id the serialized voltage probe with this name was assigned. */
+  const probeScope = (name: string): string | undefined => {
     const probe = records.find(record => record.type === 'simulation_voltage_probe' && record.name === name)!
     return probe.type === 'simulation_voltage_probe' ? probe.subcircuit_id : undefined
   }
@@ -171,13 +185,17 @@ test('a channel between sibling saved subcircuits is scoped to their nearest com
 })
 
 test('saved boards with prior simulation declarations are rejected before native rendering', async () => {
-  const source = new Circuit(); source.add(tree()); await source.renderUntilSettled()
+  const source = new Circuit()
+  source.add(tree())
+  await source.renderUntilSettled()
   const circuit = new Circuit()
   assert.throws(() => circuit.add(h(ImportedBoard, { circuitJson: source.getCircuitJson() }, ...declarations())), /without existing simulation declarations or results/)
 })
 
 test('saved board pins retain their original physical identity', async () => {
-  const source = new Circuit(); source.add(tree()); await source.renderUntilSettled()
+  const source = new Circuit()
+  source.add(tree())
+  await source.renderUntilSettled()
   const original: unknown[] = source.getCircuitJson().filter(record => !record.type.startsWith('simulation_'))
   original.push({ type: 'source_port', source_port_id: 'saved-board-pin', source_component_id: null, name: 'EXT', pin_number: 9,
     subcircuit_id: 'subcircuit_source_group_0' })
@@ -235,7 +253,9 @@ test('explicit chip selectors remain unambiguous when a saved physical pin has t
 
 
 test('unused connector internal aliases preserve the saved board without blocking selected native simulation', async () => {
-  const source = new Circuit(); source.add(tree()); await source.renderUntilSettled()
+  const source = new Circuit()
+  source.add(tree())
+  await source.renderUntilSettled()
   const original: unknown[] = source.getCircuitJson().filter(record => !record.type.startsWith('simulation_'))
   original.push({ type: 'source_component', source_component_id: 'saved-connector', ftype: 'simple_connector', name: 'J_USB0', source_group_id: 'source_group_0' })
   original.push({ type: 'source_port', source_port_id: 'saved-shield', source_component_id: 'saved-connector', name: 'SHIELD',
@@ -255,7 +275,9 @@ test('unused connector internal aliases preserve the saved board without blockin
 
 
 test('saved board bridge rejects additional physical traces inside declaration children', async () => {
-  const source = new Circuit(); source.add(tree()); await source.renderUntilSettled()
+  const source = new Circuit()
+  source.add(tree())
+  await source.renderUntilSettled()
   const original = source.getCircuitJson().filter(record => !record.type.startsWith('simulation_'))
   const circuit = new Circuit()
   circuit.add(h(ImportedBoard, { circuitJson: original }, ...declarations(), h('trace', { from: '.U1 > .DATA', to: '.U1 > .VCC' })))
@@ -285,7 +307,9 @@ test('selected saved pin names containing CSS punctuation map structurally witho
 })
 
 test('ImportedBoard forwards fabricatorPreset/material and binds emitted construction to the saved board', async () => {
-  const source = new Circuit(); source.add(tree()); await source.renderUntilSettled()
+  const source = new Circuit()
+  source.add(tree())
+  await source.renderUntilSettled()
   const original = source.getCircuitJson().filter(record => !record.type.startsWith('simulation_'))
   const savedBoard = original.find(record => record.type === 'pcb_board')!
   if (savedBoard.type !== 'pcb_board') throw Error('fixture')
@@ -300,10 +324,12 @@ test('ImportedBoard forwards fabricatorPreset/material and binds emitted constru
   assert.equal(board._parsedProps.material, 'fr4')
   // Isolate serialization from core's unreleased stackup generator. The scratch
   // consumer also exercises actual generation against the sibling core tarball.
-  const native = circuit.getCircuitJson(), construction = JSON.parse(readFileSync(new URL('../fixtures/jlc-stackup.json', import.meta.url), 'utf8'))
+  const native = circuit.getCircuitJson()
+  const construction = JSON.parse(readFileSync(new URL('../fixtures/jlc-stackup.json', import.meta.url), 'utf8'))
   circuit.getCircuitJson = () => [...native.filter(record => record.type !== 'pcb_stackup'),
     {...construction, pcb_board_id: native.find(record => record.type === 'pcb_board')!.pcb_board_id}]
-  const records = serializeSimulation(circuit), stackup = records.find(record => record.type === 'pcb_stackup')!
+  const records = serializeSimulation(circuit)
+  const stackup = records.find(record => record.type === 'pcb_stackup')!
   assert.equal(stackup?.type, 'pcb_stackup')
   if (stackup.type !== 'pcb_stackup') throw Error('fixture')
   assert.equal(stackup.pcb_board_id, 'saved-board')
@@ -314,7 +340,9 @@ test('ImportedBoard forwards fabricatorPreset/material and binds emitted constru
 })
 
 test('ImportedBoard preserves an existing saved stackup even when a fabricatorPreset is supplied', async () => {
-  const source = new Circuit(); source.add(tree()); await source.renderUntilSettled()
+  const source = new Circuit()
+  source.add(tree())
+  await source.renderUntilSettled()
   const original = source.getCircuitJson().filter(record => !record.type.startsWith('simulation_'))
   const savedBoard = original.find(record => record.type === 'pcb_board')!
   if (savedBoard.type !== 'pcb_board') throw Error('fixture')
@@ -325,7 +353,8 @@ test('ImportedBoard preserves an existing saved stackup even when a fabricatorPr
       {layer_type: 'copper' as const, layer: 'bottom' as const, thickness: .035},
     ]}
   original.push(savedStackup)
-  const before = structuredClone(original), circuit = new Circuit()
+  const before = structuredClone(original)
+  const circuit = new Circuit()
   circuit.add(h(ImportedBoard, {circuitJson: original, fabricatorPreset: 'jlcpcb_standard', material: 'flex'}, ...declarations()))
   await circuit.renderUntilSettled()
   assert.equal(circuit.children.find(child => child.componentName === 'Board')!._parsedProps.material, 'flex')

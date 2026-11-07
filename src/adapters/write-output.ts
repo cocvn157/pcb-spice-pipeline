@@ -14,7 +14,11 @@ export async function writePipelineOutput({ result, outputDir }: { result: Pipel
     const target = resolve(root, path)
     await mkdir(dirname(target), { recursive: true })
     contained(root, await realpath(dirname(target)))
-    try { contained(root, await realpath(target)) } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
+    try {
+      contained(root, await realpath(target))
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
     await writeFile(target, body)
   }
 }

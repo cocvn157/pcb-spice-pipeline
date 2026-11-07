@@ -28,7 +28,8 @@ test('unknown stackup, return and omitted pin mapping produce explicit diagnosti
   }
 })
 test('stale PCB endpoint metadata cannot silently change physical IBIS pin',()=>{
-  const cj=structuredClone(small.circuitJson),trace=cj.find(e=>e.type==='pcb_trace')
+  const cj=structuredClone(small.circuitJson)
+  const trace=cj.find(e=>e.type==='pcb_trace')
   trace.route[0].start_pcb_port_id='wrong'
   assert.throws(()=>geometryFromCircuitJson(cj,small.modeling),/stale_endpoint/)
 })
@@ -37,12 +38,15 @@ test('unspecified plating and ignored via stubs require explicit choices',()=>{
   assert.throws(()=>geometryFromCircuitJson(real.circuitJson,{...real.modeling,omitThroughViaStubs:false}),/via_stub/)
 })
 test('malformed intermediate coordinates cannot silently shorten the extracted route',()=>{
-  const cj=structuredClone(small.circuitJson),trace=cj.find(e=>e.type==='pcb_trace')
+  const cj=structuredClone(small.circuitJson)
+  const trace=cj.find(e=>e.type==='pcb_trace')
   trace.route.splice(1,0,{...trace.route[0],x:5},{...trace.route[0],x:'broken'})
   assert.throws(()=>geometryFromCircuitJson(cj,small.modeling),/route\[2\].x/)
 })
 test('discontinuous or zero-length vias are rejected',()=>{
-  const cj=structuredClone(real.circuitJson),trace=cj.find(e=>e.type==='pcb_trace'&&e.source_trace_id==='source_trace_15'),via=trace.route.find(v=>v.route_type==='via')
+  const cj=structuredClone(real.circuitJson)
+  const trace=cj.find(e=>e.type==='pcb_trace'&&e.source_trace_id==='source_trace_15')
+  const via=trace.route.find(v=>v.route_type==='via')
   via.from_layer='inner1'
   assert.throws(()=>geometryFromCircuitJson(cj,real.modeling),/via_geometry/)
 })

@@ -47,18 +47,22 @@ export interface CheckOptions {
 
 const SOURCE = /\.(?:[cm]?ts|tsx|[cm]?js|jsx)$/
 const TEST = /\.test\.(?:[cm]?ts|tsx|[cm]?js|jsx)$/
-const toPosix = (p: string) => p.split(sep).join('/')
-const todayUtc = () => new Date().toISOString().slice(0, 10)
+/** Normalizes a native path to forward slashes so reports and comparisons match on every OS. */
+const toPosix = (p: string): string => p.split(sep).join('/')
+/** Today's date as YYYY-MM-DD in UTC, the format exemption expiry dates are compared against. */
+const todayUtc = (): string => new Date().toISOString().slice(0, 10)
+/** True when the value is a real YYYY-MM-DD date string, so malformed expiry dates are caught. */
 const isoDate = (s: unknown): s is string => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s))
 
 /** Single source: every src/<dir>/index.ts. Tests live in the sibling tests/<dir>/. */
-export function discoverModules(src: string, tests = join(dirname(src), 'tests')): ModuleInfo[] {
+export function discoverModules(src: string, tests: string = join(dirname(src), 'tests')): ModuleInfo[] {
   return readdirSync(src, { withFileTypes: true })
     .filter(d => d.isDirectory() && existsSync(join(src, d.name, 'index.ts')))
     .map(d => ({ dir: d.name, root: join(src, d.name), tests: join(tests, d.name) }))
     .sort((a, b) => a.dir.localeCompare(b.dir))
 }
 
+/** Lists every file under a directory whose name matches the pattern, sorted; a missing directory yields none. */
 function walk(dir: string, keep: RegExp): string[] {
   if (!existsSync(dir) || !statSync(dir).isDirectory()) return []
   return readdirSync(dir, { withFileTypes: true }).flatMap(d => {
@@ -66,9 +70,14 @@ function walk(dir: string, keep: RegExp): string[] {
     return d.isDirectory() ? walk(path, keep) : keep.test(d.name) ? [path] : []
   }).sort()
 }
-const parse = (file: string) => ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true)
+/** Reads a file and parses it into a TypeScript AST with parent links set. */
+const parse = (file: string): ts.SourceFile => ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true)
 
-function visit(node: ts.Node, fn: (n: ts.Node) => void) { fn(node); ts.forEachChild(node, c => visit(c, fn)) }
+/** Calls the callback on a node and every descendant, depth first. */
+function visit(node: ts.Node, fn: (n: ts.Node) => void): void {
+  fn(node)
+  ts.forEachChild(node, c => visit(c, fn))
+}
 
 /** `x as const`, `x satisfies T`, `(x)` → x */
 function unwrap(e: ts.Expression): ts.Expression {
@@ -83,7 +92,8 @@ export function findDiagnosticsCalls(root: string): DiagnosticsCall[] {
   const calls: DiagnosticsCall[] = []
   for (const file of walk(root, SOURCE)) visit(parse(file), n => {
     if (!ts.isCallExpression(n) || !ts.isIdentifier(n.expression) || n.expression.text !== 'diagnostics') return
-    const [d, list] = n.arguments, call: DiagnosticsCall = { file }
+    const [d, list] = n.arguments
+    const call: DiagnosticsCall = { file }
     if (d && ts.isStringLiteralLike(d)) call.domain = d.text
     const arr = list && unwrap(list)
     if (arr && ts.isArrayLiteralExpression(arr) && arr.elements.every(ts.isStringLiteralLike))
@@ -95,18 +105,29 @@ export function findDiagnosticsCalls(root: string): DiagnosticsCall[] {
   return calls
 }
 
+/** Reads tools/exemptions.json, treating a missing file as no exemptions and reporting unparsable JSON as a problem. */
 function loadExemptions(path: string): { value: Exemptions; problem?: string } {
   if (!existsSync(path)) return { value: {} }
-  try { return { value: JSON.parse(readFileSync(path, 'utf8')) as Exemptions } }
+  try {
+    return { value: JSON.parse(readFileSync(path, 'utf8')) as Exemptions }
+  }
   catch (e) { return { value: {}, problem: `${toPosix(path)}: ${(e as Error).message}` } }
 }
 
 /** Validates expiry; returns the waivers that are still in force plus EX violations. */
-export function activeExemptions(ex: Exemptions, today = todayUtc()): { legacy: string[]; waivers: Map<string, Set<string>>; violations: Violation[] } {
-  const violations: Violation[] = [], waivers = new Map<string, Set<string>>()
-  const live = (expires: unknown, module: string, what: string) => {
-    if (!isoDate(expires)) { violations.push({ rule: 'EX', module, message: `${what}: "expires" must be an ISO date (YYYY-MM-DD), got ${JSON.stringify(expires)}` }); return false }
-    if (today > expires) { violations.push({ rule: 'EX', module, message: `${what} expired on ${expires}; finish the move and delete the entry from tools/exemptions.json` }); return false }
+export function activeExemptions(ex: Exemptions, today: string = todayUtc()): { legacy: string[]; waivers: Map<string, Set<string>>; violations: Violation[] } {
+  const violations: Violation[] = []
+  const waivers = new Map<string, Set<string>>()
+  /** True when an entry's expiry is valid and not yet passed; otherwise records an EX violation. */
+  const live = (expires: unknown, module: string, what: string): boolean => {
+    if (!isoDate(expires)) {
+      violations.push({ rule: 'EX', module, message: `${what}: "expires" must be an ISO date (YYYY-MM-DD), got ${JSON.stringify(expires)}` })
+      return false
+    }
+    if (today > expires) {
+      violations.push({ rule: 'EX', module, message: `${what} expired on ${expires}; finish the move and delete the entry from tools/exemptions.json` })
+      return false
+    }
     return true
   }
   let legacy: string[] = []
@@ -121,7 +142,7 @@ export function activeExemptions(ex: Exemptions, today = todayUtc()): { legacy: 
 }
 
 /** True when `rel` (posix, relative to the repo root) is a listed legacy file or lies in a listed legacy dir. */
-const isLegacy = (rel: string, legacy: readonly string[]) =>
+const isLegacy = (rel: string, legacy: readonly string[]): boolean =>
   legacy.some(p => p.endsWith('/') ? rel === p.slice(0, -1) || rel.startsWith(p) : rel === p)
 
 /**
@@ -130,28 +151,41 @@ const isLegacy = (rel: string, legacy: readonly string[]) =>
  * loop whose body makes an assertion (table-driven tests).
  */
 function assertedLiterals(file: string): Set<string> {
-  const found = new Set<string>(), sf = parse(file)
+  const found = new Set<string>()
+  const sf = parse(file)
+  /** True for calls that look like test assertions (assert.*, expect, rejects, throws and friends). */
   const isAssertion = (n: ts.Node): n is ts.CallExpression => {
     if (!ts.isCallExpression(n)) return false
     const callee = n.expression.getText(sf)
     return /(?:^|\.)(?:assert|expect|rejects|throws|doesNotThrow|doesNotReject|equal|strictEqual|deepEqual|deepStrictEqual|match|ok|partialDeepStrictEqual)\b/.test(callee) || /^assert\b/.test(callee)
   }
-  const collect = (root: ts.Node) => visit(root, n => {
+  /** Records every string literal and every word in a regex literal under the given node. */
+  const collect = (root: ts.Node): void => visit(root, n => {
     if (ts.isStringLiteralLike(n)) found.add(n.text)
     else if (ts.isRegularExpressionLiteral(n)) for (const w of n.text.match(/[A-Za-z0-9_]+/g) ?? []) found.add(w)
   })
   visit(sf, n => {
     if (isAssertion(n)) n.arguments.forEach(collect)
-    if (ts.isForOfStatement(n)) { let asserts = false; visit(n.statement, m => { if (isAssertion(m)) asserts = true }); if (asserts) collect(n.expression) }
+    if (ts.isForOfStatement(n)) {
+      let asserts = false
+      visit(n.statement, m => {
+        if (isAssertion(m)) asserts = true
+      })
+      if (asserts) collect(n.expression)
+    }
   })
   return found
 }
 
+/** Checks one module against M1-M3, skipping rules its exemption waives. */
 export function checkModule(m: ModuleInfo, options: CheckOptions = {}): Violation[] {
   const { waivers } = activeExemptions(options.exemptions ?? {}, options.today)
   const waived = waivers.get(m.dir) ?? new Set<string>()
   const out: Violation[] = []
-  const push = (rule: 'M1' | 'M2' | 'M3', message: string) => { if (!waived.has(rule)) out.push({ rule, module: m.dir, message }) }
+  /** Records a violation for this module unless that rule is waived. */
+  const push = (rule: 'M1' | 'M2' | 'M3', message: string): void => {
+    if (!waived.has(rule)) out.push({ rule, module: m.dir, message })
+  }
 
   const calls = findDiagnosticsCalls(m.root)
   if (calls.length !== 1) push('M1', `expected exactly one diagnostics('${m.dir}', [...] as const) call, found ${calls.length}${calls.length ? ` (${calls.map(c => toPosix(c.file)).join(', ')})` : ''}`)
@@ -161,7 +195,10 @@ export function checkModule(m: ModuleInfo, options: CheckOptions = {}): Violatio
   }
 
   const tests = walk(m.tests, TEST)
-  if (!tests.length) { push('M2', `${toPosix(m.tests)}/ has no *.test.* file`); return out }
+  if (!tests.length) {
+    push('M2', `${toPosix(m.tests)}/ has no *.test.* file`)
+    return out
+  }
 
   const codes = [...new Set(calls.flatMap(c => c.codes ?? []))]
   if (codes.length) {
@@ -173,6 +210,7 @@ export function checkModule(m: ModuleInfo, options: CheckOptions = {}): Violatio
 }
 
 interface ImportEdge { file: string; specifier: string; target?: string }
+/** Lists a file's import specifiers, resolving relative ones to absolute targets. */
 function importsOf(file: string): ImportEdge[] {
   const info = ts.preProcessFile(readFileSync(file, 'utf8'), true, true)
   return info.importedFiles.map(({ fileName }) => ({
@@ -188,13 +226,17 @@ function resolveTarget(abs: string): string {
 const NODE_BUILTIN = /^(?:node:|(?:fs|child_process)(?:\/|$))/
 
 /** Strip a JS/TS extension so `x.js` (specifier) and `x.ts` (file on disk) compare equal. */
-const stem = (p: string) => p.replace(/\.(?:[cm]?[jt]s|[jt]sx)$/, '')
+const stem = (p: string): string => p.replace(/\.(?:[cm]?[jt]s|[jt]sx)$/, '')
 
+/** Checks src/ as a whole against S1-S6: ownership, import boundaries, cycles, Node built-ins, entry imports and generated unions. */
 export function checkSource(src: string, modules: ModuleInfo[], options: CheckOptions = {}): Violation[] {
   const out: Violation[] = []
-  const repo = dirname(resolve(src)), rel = (p: string) => toPosix(relative(repo, resolve(p)))
+  const repo = dirname(resolve(src))
+  /** A path relative to the repo root, in posix form, for messages and legacy matching. */
+  const rel = (p: string): string => toPosix(relative(repo, resolve(p)))
   const { legacy } = activeExemptions(options.exemptions ?? {}, options.today)
   const names = new Set(modules.map(m => m.dir))
+  /** The module that owns an absolute path, or undefined when it is outside every module. */
   const moduleOf = (abs: string): string | undefined => {
     const parts = toPosix(relative(resolve(src), abs)).split('/')
     return parts.length > 1 && names.has(parts[0]) ? parts[0] : undefined
@@ -203,15 +245,18 @@ export function checkSource(src: string, modules: ModuleInfo[], options: CheckOp
   // S1: every directory is a module; flat files are index.ts + modules.generated.ts only.
   for (const d of readdirSync(src, { withFileTypes: true })) {
     const path = rel(join(src, d.name))
-    if (d.isDirectory()) { if (!names.has(d.name) && !isLegacy(path + '/', legacy)) out.push({ rule: 'S1', module: 'src', message: `${path}/ has no index.ts (unowned code)` }) }
-    else if (!['index.ts', 'modules.generated.ts'].includes(d.name) && !isLegacy(path, legacy))
+    if (d.isDirectory()) {
+      if (!names.has(d.name) && !isLegacy(path + '/', legacy)) out.push({ rule: 'S1', module: 'src', message: `${path}/ has no index.ts (unowned code)` })
+    } else if (!['index.ts', 'modules.generated.ts'].includes(d.name) && !isLegacy(path, legacy))
       out.push({ rule: 'S1', module: 'src', message: `${path}: only src/index.ts and src/modules.generated.ts may live directly in src/` })
   }
 
   // S2 + S4 + graph for S3
   const graph = new Map<string, Set<string>>([...names].map(n => [n, new Set<string>()]))
   for (const file of walk(src, SOURCE)) {
-    const owner = moduleOf(resolve(file)), path = rel(file), legacyFile = !owner && isLegacy(path, legacy)
+    const owner = moduleOf(resolve(file))
+    const path = rel(file)
+    const legacyFile = !owner && isLegacy(path, legacy)
     for (const edge of importsOf(file)) {
       if (NODE_BUILTIN.test(edge.specifier) && owner !== 'adapters' && !legacyFile)
         out.push({ rule: 'S4', module: owner ?? 'src', message: `${path} imports '${edge.specifier}'; Node built-ins belong in src/adapters/` })
@@ -232,17 +277,30 @@ export function checkSource(src: string, modules: ModuleInfo[], options: CheckOp
 
   // S3: strongly connected components of size > 1 are cycles (Tarjan).
   let index = 0
-  const idx = new Map<string, number>(), low = new Map<string, number>(), stack: string[] = [], on = new Set<string>()
-  const strong = (v: string) => {
-    idx.set(v, index); low.set(v, index++); stack.push(v); on.add(v)
+  const idx = new Map<string, number>()
+  const low = new Map<string, number>()
+  const stack: string[] = []
+  const on = new Set<string>()
+  /** Tarjan's strongly-connected-components step from one module; reports each cycle it closes. */
+  const strong = (v: string): void => {
+    idx.set(v, index)
+    low.set(v, index++)
+    stack.push(v)
+    on.add(v)
     for (const w of [...graph.get(v)!].sort()) {
-      if (!idx.has(w)) { strong(w); low.set(v, Math.min(low.get(v)!, low.get(w)!)) }
-      else if (on.has(w)) low.set(v, Math.min(low.get(v)!, idx.get(w)!))
+      if (!idx.has(w)) {
+        strong(w)
+        low.set(v, Math.min(low.get(v)!, low.get(w)!))
+      } else if (on.has(w)) low.set(v, Math.min(low.get(v)!, idx.get(w)!))
     }
     if (low.get(v) === idx.get(v)) {
       const scc: string[] = []
       let w: string
-      do { w = stack.pop()!; on.delete(w); scc.push(w) } while (w !== v)
+      do {
+        w = stack.pop()!
+        on.delete(w)
+        scc.push(w)
+      } while (w !== v)
       if (scc.length > 1) {
         scc.sort()
         const edges = scc.flatMap(a => [...graph.get(a)!].filter(b => scc.includes(b)).sort().map(b => `${a} -> ${b}`))
@@ -270,8 +328,10 @@ export function checkSource(src: string, modules: ModuleInfo[], options: CheckOp
   const codes = new Map(modules.map(m => [m.dir, findDiagnosticsCalls(m.root).flatMap(c => c.codes ?? [])]))
   const expected = renderModulesGenerated(modules, codes, current)
   if (current !== expected) {
-    const before = parseModulesGenerated(current), after = parseModulesGenerated(expected)
-    const diff = (k: 'domains' | 'codes') => [...after[k]].filter(x => !before[k].has(x)).map(x => `+${x}`)
+    const before = parseModulesGenerated(current)
+    const after = parseModulesGenerated(expected)
+    /** Names added (+) and removed (-) between the current and expected generated file. */
+    const diff = (k: 'domains' | 'codes'): string[] => [...after[k]].filter(x => !before[k].has(x)).map(x => `+${x}`)
       .concat([...before[k]].filter(x => !after[k].has(x)).map(x => `-${x}`))
     const parts = [['DomainName', diff('domains')], ['DiagnosticCode', diff('codes')]].filter(([, d]) => d.length).map(([n, d]) => `${n} ${(d as string[]).join(' ')}`)
     out.push({ rule: 'S6', module: 'src', message: `${rel(generated)} is stale (${parts.length ? parts.join('; ') : 'formatting only'}); run check:modules --write` })
@@ -285,12 +345,15 @@ export function parseModulesGenerated(text: string): { domains: Set<string>; cod
   const result = { domains: new Set<string>(), codes: new Set<string>() }
   for (const s of sf.statements) if (ts.isTypeAliasDeclaration(s)) {
     const into = s.name.text === 'DomainName' ? result.domains : s.name.text === 'DiagnosticCode' ? result.codes : undefined
-    if (into) visit(s.type, n => { if (ts.isLiteralTypeNode(n) && ts.isStringLiteral(n.literal)) into.add(n.literal.text) })
+    if (into) visit(s.type, n => {
+      if (ts.isLiteralTypeNode(n) && ts.isStringLiteral(n.literal)) into.add(n.literal.text)
+    })
   }
   return result
 }
 
-const union = (items: string[], perLine = 6) => {
+/** Renders string literals as a multi-line TypeScript union body, or `never` when empty. */
+const union = (items: string[], perLine: number = 6): string => {
   if (!items.length) return '  never'
   const lines: string[] = []
   for (let i = 0; i < items.length; i += perLine) lines.push('  | ' + items.slice(i, i + perLine).map(x => `'${x}'`).join(' | '))
@@ -301,7 +364,7 @@ const union = (items: string[], perLine = 6) => {
  * DomainName = module dirs. DiagnosticCode = codes already in the existing file (seeded from today's
  * raised codes; never dropped) ∪ every literal in a module's diagnostics tuple. Sorted, deterministic.
  */
-export function renderModulesGenerated(modules: ModuleInfo[], codes: Map<string, string[]>, existing = ''): string {
+export function renderModulesGenerated(modules: ModuleInfo[], codes: Map<string, string[]>, existing: string = ''): string {
   const domains = [...new Set(modules.map(m => m.dir))].sort()
   const all = [...new Set([...parseModulesGenerated(existing).codes, ...[...codes.values()].flat()])].sort()
   return `// GENERATED by scripts/check-modules.ts --write. Do not edit.
@@ -342,10 +405,14 @@ export function runChecks(root: string, { write = false, today = todayUtc() }: {
   const prefix = toPosix(resolve(root)) + '/'
   const seen = new Set<string>()
   return violations.map(v => ({ ...v, message: v.message.split(prefix).join('') }))
-    .filter(v => { const key = formatViolation(v); return !seen.has(key) && !!seen.add(key) })
+    .filter(v => {
+      const key = formatViolation(v)
+      return !seen.has(key) && !!seen.add(key)
+    })
 }
 
-export const formatViolation = (v: Violation) => `${v.rule} ${v.module ?? 'src'}: ${v.message}`
+/** One report line for a violation: rule, module, message. */
+export const formatViolation = (v: Violation): string => `${v.rule} ${v.module ?? 'src'}: ${v.message}`
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')

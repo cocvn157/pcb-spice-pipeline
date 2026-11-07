@@ -7,7 +7,7 @@ interface ScopeRecord { type: string; [key: string]: unknown }
  * (for example a processor and its DDR memory). A channel between siblings
  * belongs to their nearest common subcircuit. `undefined` is the unscoped root.
  */
-export function subcircuitTree(records: readonly ScopeRecord[]) {
+export function subcircuitTree(records: readonly ScopeRecord[]): { within: (inner: unknown, outer: unknown) => boolean; common: (scopes: readonly unknown[]) => unknown } {
   const groups = new Map(records.filter(record => record.type === 'source_group').map(record => [record.source_group_id, record]))
   const parents = new Map<unknown, unknown>()
   for (const group of groups.values()) {
@@ -20,11 +20,15 @@ export function subcircuitTree(records: readonly ScopeRecord[]) {
       visited.add(groupId)
       const ancestor = groups.get(groupId)
       if (!ancestor) break
-      if (ancestor.subcircuit_id && ancestor.subcircuit_id !== group.subcircuit_id) { parent = ancestor.subcircuit_id; break }
+      if (ancestor.subcircuit_id && ancestor.subcircuit_id !== group.subcircuit_id) {
+        parent = ancestor.subcircuit_id
+        break
+      }
       groupId = ancestor.parent_source_group_id
     }
     parents.set(group.subcircuit_id, parent)
   }
+  /** Ancestor chain of a scope, innermost first and ending with the unscoped root. */
   const chain = (scope: unknown): unknown[] => {
     const scopes: unknown[] = []
     for (let current = scope; current !== undefined && current !== null; current = parents.get(current)) {
@@ -34,7 +38,7 @@ export function subcircuitTree(records: readonly ScopeRecord[]) {
     return [...scopes, undefined]
   }
   /** True when `inner` is `outer` or nested inside it. */
-  const within = (inner: unknown, outer: unknown) => chain(inner).includes(outer ?? undefined)
+  const within = (inner: unknown, outer: unknown): boolean => chain(inner).includes(outer ?? undefined)
   /** Nearest subcircuit containing every scope. */
   const common = (scopes: readonly unknown[]): unknown => {
     if (!scopes.length) return undefined

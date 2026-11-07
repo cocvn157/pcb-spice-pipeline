@@ -46,7 +46,8 @@ export function compileBuffers<M extends { pipelineId: string; ibis_component_na
   admitted: AdmittedBuffers, plans: readonly P[], define: (model: M, plan: P) => ModelRunDefinition): CompiledBuffer[][] {
   return plans.map(plan => plan.models.map(model => {
     const index = admitted.models.findIndex(selected => selected.pipelineId === model.pipelineId)
-    const input = define(model, plan), source = admitted.sources[index]
+    const input = define(model, plan)
+    const source = admitted.sources[index]
     input.definition.source = { file: source.evidence.ibsFile, sha256: source.evidence.sourceSha256 }
     const result = converter.convertIbisModelToSpice(source.bytes, input.definition, input.run)
     return { ...result, name: model.ibis_component_name, pipelineId: model.pipelineId, input, sourceEvidence: admitted.sources[index].evidence }

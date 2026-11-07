@@ -19,11 +19,14 @@ export type EyeFoldInput =
  * experiment's waveform.csv. Bytes match the pre-module general-pipeline.ts eye loop.
  */
 export function foldEyes(rows: WaveformRows, eyes: readonly EyeFoldInput[], waveform: { readonly sha256: string }, experiment: ArtifactScope): Produced<EyeResult[]> {
-  const artifacts: Artifact[] = [], results: EyeResult[] = []
+  const artifacts: Artifact[] = []
+  const results: EyeResult[] = []
   for (const input of eyes) {
-    const eye = input.request, received = input.alignment.kind === 'received-differential-dqs'
+    const eye = input.request
+    const received = input.alignment.kind === 'received-differential-dqs'
     const ddrAssessment = 'ddrAssessment' in input ? input.ddrAssessment : undefined
-    const directory = `eyes/${eye.simulationEyeDiagramId}`, scope = experiment.child('eyes', eye.simulationEyeDiagramId)
+    const directory = `eyes/${eye.simulationEyeDiagramId}`
+    const scope = experiment.child('eyes', eye.simulationEyeDiagramId)
     const folded = foldProbeEye(rows, eye, { alignment: input.alignment })
     artifacts.push(scope.text('eye-data.csv', eyeDataCsv(folded.samples)))
     const descriptor: EyeResult = {
@@ -35,7 +38,8 @@ export function foldEyes(rows: WaveformRows, eyes: readonly EyeFoldInput[], wave
         : 'b_k=timeOrigin+k*UI; [b_k-UI/2,b_k+3*UI/2]; complete windows only',
       source: '../../waveform.csv', sourceSha256: waveform.sha256, metrics: folded.metrics,
     }
-    artifacts.push(scope.json('eye-data.json', descriptor)); results.push(descriptor)
+    artifacts.push(scope.json('eye-data.json', descriptor))
+    results.push(descriptor)
   }
   artifacts.push(experiment.json('eyes.json', results))
   return { value: results, artifacts }

@@ -14,7 +14,10 @@ import type { BoundExperiments, CircuitNodes, ElectricalSources, ExperimentModel
  * Returns the SAME array (no copies: ddr binds eyes by identity), typed with branded ids.
  */
 export function safeSimulationPlans(plans: SimulationPlan[]): SafeSimulationPlan[] {
-  for (const plan of plans) { safeId(plan.simulationExperimentId, 'simulationExperimentId'); for (const eye of plan.eyes) safeId(eye.simulationEyeDiagramId, 'simulationEyeDiagramId') }
+  for (const plan of plans) {
+    safeId(plan.simulationExperimentId, 'simulationExperimentId')
+    for (const eye of plan.eyes) safeId(eye.simulationEyeDiagramId, 'simulationEyeDiagramId')
+  }
   return plans as unknown as SafeSimulationPlan[]
 }
 
@@ -38,7 +41,9 @@ export function bindExperiments<M extends ExperimentModel>(experiments: Experime
  */
 export async function runExperiment(ctx: SolverContext, experiment: ArtifactScope, bound: BoundExperiments, index: number,
   geometry: Pick<Geometry, 'mappings'>, modeling: { sections: number }, extracted: readonly StageMatrices[]): Promise<Produced<ExperimentRun>> {
-  const plan = bound.plans[index], models = bound.compiled[index], artifacts: Artifact[] = []
+  const plan = bound.plans[index]
+  const models = bound.compiled[index]
+  const artifacts: Artifact[] = []
   const solverFiles: Record<string, string> = Object.create(null)
   for (const model of models) solverFiles[`${safeId(model.pipelineId, 'simulationIbisModelId')}.lib`] = model.source
   artifacts.push(experiment.json('experiment.json', plan))
