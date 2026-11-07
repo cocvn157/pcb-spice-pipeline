@@ -1,6 +1,6 @@
 # Adapted from @tscircuit/plop's bun-pver-release workflow.
 # Releases are GitHub release assets, not npm packages: consumers depend on
-# https://github.com/tscircuit/pcb-spice-pipeline/releases/download/v<version>/tscircuit-pcb-spice-pipeline-<version>.tgz
+# https://github.com/tscircuit/signal-integrity-pipeline/releases/download/v<version>/tscircuit-signal-integrity-pipeline-<version>.tgz
 name: Release
 on:
   push:
@@ -59,8 +59,13 @@ jobs:
             exit 1
           fi
           pnpm install --frozen-lockfile
-          npm pack
-          gh release create "$TAG" "tscircuit-pcb-spice-pipeline-$VERSION.tgz" \
+          # Pack into an empty directory and upload whatever npm produced, so the
+          # asset name always follows the package name in package.json.
+          PACK_DIR="$RUNNER_TEMP/pack"
+          rm -rf "$PACK_DIR" && mkdir -p "$PACK_DIR"
+          npm pack --pack-destination "$PACK_DIR"
+          TARBALL=$(ls "$PACK_DIR"/*.tgz)
+          gh release create "$TAG" "$TARBALL" \
             --verify-tag --title "$TAG" --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
