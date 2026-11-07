@@ -20,7 +20,7 @@ try {
   const consumer=join(temporary,'consumer');await mkdir(consumer)
   await writeFile(join(consumer,'package.json'),JSON.stringify({type:'module',private:true}))
   await run('npm',['install','--ignore-scripts','--legacy-peer-deps','--no-audit','--no-fund',join(temporary,packed.filename)],consumer)
-  const installed=join(consumer,'node_modules/@tscircuit/pcb-spice-pipeline')
+  const installed=join(consumer,'node_modules/@tscircuit/signal-integrity-pipeline')
   await assert.rejects(access(join(installed,'src')),{code:'ENOENT'})
   await assert.rejects(access(join(consumer,'node_modules/react')),{code:'ENOENT'})
   // circuit-json is a peer: the package never installs its own copy into a host tree.
@@ -29,7 +29,7 @@ try {
   const circuitJsonVersion=JSON.parse(await readFile(join(root,'package.json'),'utf8')).devDependencies['circuit-json']
   await run('npm',['install','--ignore-scripts','--legacy-peer-deps','--no-audit','--no-fund',`circuit-json@${circuitJsonVersion}`],consumer)
   const manifest=JSON.parse(await readFile(join(installed,'package.json'),'utf8'))
-  assert.equal(manifest.name,'@tscircuit/pcb-spice-pipeline')
+  assert.equal(manifest.name,'@tscircuit/signal-integrity-pipeline')
   assert.equal(manifest.main,'./dist/index.js');assert.equal(manifest.types,'./dist/index.d.ts')
   assert.equal(manifest.scripts.prepare,undefined)
   assert.ok(Object.values(manifest.peerDependenciesMeta).every(peer=>peer.optional))
@@ -38,8 +38,8 @@ try {
   await writeFile(join(consumer,'input.json'),JSON.stringify(input))
   await copyFile(join(root,'tests/fixtures/solver.mjs'),join(consumer,'solver.mjs'))
   const smoke=`import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
-import {runPipeline,generateReport} from '@tscircuit/pcb-spice-pipeline';
-import {createNativeSolver,loadIbisSources,writePipelineOutput} from '@tscircuit/pcb-spice-pipeline/node';
+import {runPipeline,generateReport} from '@tscircuit/signal-integrity-pipeline';
+import {createNativeSolver,loadIbisSources,writePipelineOutput} from '@tscircuit/signal-integrity-pipeline/node';
 import {fixtureSolver} from './solver.mjs';
 const result=await runPipeline({...JSON.parse(readFileSync('input.json','utf8')),runSolver:fixtureSolver});
 assert.equal(result.experiments.length,1);assert.ok(generateReport(result)['results.html']);
@@ -48,12 +48,12 @@ assert.equal(typeof createNativeSolver,'function');assert.equal(typeof loadIbisS
   await run(process.execPath,['smoke.mjs'],consumer)
   console.log('Packed Node import + complete in-memory run: passed (host circuit-json only; no other peers, source tree or install scripts)')
   const denied=(await readFile(join(root,'tests/denied-host.mjs'),'utf8'))
-    .replace("'./fixtures/solver.mjs'","'./solver.mjs'").replace("'../dist/index.js'","'@tscircuit/pcb-spice-pipeline'")
+    .replace("'./fixtures/solver.mjs'","'./solver.mjs'").replace("'../dist/index.js'","'@tscircuit/signal-integrity-pipeline'")
   await writeFile(join(consumer,'denied-host.mjs'),denied.replace("readFileSync(0,'utf8')","readFileSync('input.json','utf8')"))
   await run(process.execPath,['denied-host.mjs'],consumer)
   console.log('Packed cold import + run with host actions denied: passed')
-  await writeFile(join(consumer,'types.mts'),`import {runPipeline,generateReport,type PipelineOptions,type SolverRequest} from '@tscircuit/pcb-spice-pipeline';
-import {createNativeSolver,loadIbisSources,writePipelineOutput} from '@tscircuit/pcb-spice-pipeline/node';
+  await writeFile(join(consumer,'types.mts'),`import {runPipeline,generateReport,type PipelineOptions,type SolverRequest} from '@tscircuit/signal-integrity-pipeline';
+import {createNativeSolver,loadIbisSources,writePipelineOutput} from '@tscircuit/signal-integrity-pipeline/node';
 import type {CircuitJson} from 'circuit-json';
 const execute=async(options:PipelineOptions)=>{const result=await runPipeline(options);const html:string=generateReport(result)['results.html'];await writePipelineOutput({result,outputDir:html})};
 const solver=createNativeSolver();const request:SolverRequest={solver:'ngspice',files:{},args:[],outputFiles:[]};

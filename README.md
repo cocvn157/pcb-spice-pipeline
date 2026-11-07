@@ -1,4 +1,4 @@
-# @tscircuit/pcb-spice-pipeline
+# @tscircuit/signal-integrity-pipeline
 
 ## What is it?
 
@@ -16,13 +16,15 @@ You give it a tscircuit board (as Circuit JSON) and models of the chips on it (I
 
 Three free programs do the heavy physics: **FastHenry** and **FasterCap** measure the wires, and **ngspice** simulates the circuit. The library never starts them itself. You pass it a `runSolver` function that does, so the same code runs in Node, Bun, a browser or on a server. On Node with the programs installed, the `/node` entry gives you a ready-made `runSolver`.
 
+> Formerly `@tscircuit/pcb-spice-pipeline`. It still implements the `pcb_spice` simulation engine: boards keep declaring `spiceEngine="pcb_spice"`, so saved Circuit JSON does not change.
+
 ## How to use it?
 
 **On Node, with the three programs installed:**
 
 ```ts
-import { runPipeline } from '@tscircuit/pcb-spice-pipeline'
-import { createNativeSolver, loadIbisSources, writePipelineOutput } from '@tscircuit/pcb-spice-pipeline/node'
+import { runPipeline } from '@tscircuit/signal-integrity-pipeline'
+import { createNativeSolver, loadIbisSources, writePipelineOutput } from '@tscircuit/signal-integrity-pipeline/node'
 
 const result = await runPipeline({
   circuitJson,                                                    // your board
@@ -36,7 +38,7 @@ await writePipelineOutput({ result, outputDir: 'runs/example' }) // writes all f
 **Anywhere else, with your own way of running the programs:**
 
 ```ts
-import { runPipeline, generateReport, type RunSolver } from '@tscircuit/pcb-spice-pipeline'
+import { runPipeline, generateReport, type RunSolver } from '@tscircuit/signal-integrity-pipeline'
 
 const runSolver: RunSolver = async request => yourSolverService(request) // throw if the program fails
 const result = await runPipeline({ circuitJson, ibisSources: { 'models/driver.ibs': driverIbisBytes }, runSolver })
@@ -134,10 +136,10 @@ Each request has an independent working directory. FastHenry gets coarse and ref
 Node 22+ applications can opt into filesystem access and native execution:
 
 ```ts
-import { runPipeline } from '@tscircuit/pcb-spice-pipeline'
+import { runPipeline } from '@tscircuit/signal-integrity-pipeline'
 import {
   createNativeSolver, loadIbisSources, writePipelineOutput,
-} from '@tscircuit/pcb-spice-pipeline/node'
+} from '@tscircuit/signal-integrity-pipeline/node'
 
 const ibisSources = await loadIbisSources({ circuitJson, baseDir: projectDirectory })
 const runSolver = createNativeSolver({

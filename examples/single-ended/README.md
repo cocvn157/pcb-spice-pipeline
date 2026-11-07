@@ -3,8 +3,8 @@ This is a designed, manually routed single-ended CMOS pad/channel test using the
 From the project root:
 
 ```ts
-import { runPipeline } from '@tscircuit/pcb-spice-pipeline'
-import { createNativeSolver, loadIbisSources, writePipelineOutput } from '@tscircuit/pcb-spice-pipeline/node'
+import { runPipeline } from '@tscircuit/signal-integrity-pipeline'
+import { createNativeSolver, loadIbisSources, writePipelineOutput } from '@tscircuit/signal-integrity-pipeline/node'
 import { circuitJson, modeling } from './index.circuit'
 
 const ibisSources = await loadIbisSources({ circuitJson, baseDir: projectRoot })

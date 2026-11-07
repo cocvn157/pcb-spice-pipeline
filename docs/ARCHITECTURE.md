@@ -1,8 +1,8 @@
-# pcb-spice-pipeline: domain-owned modules, stages as values, verification by types and oracles
+# signal-integrity-pipeline: domain-owned modules, stages as values, verification by types and oracles
 
 ## Problem
 
-`pcb-spice-pipeline` turns Circuit JSON into native-solver extraction, IBIS buffers, ngspice transients, eyes and DDR checks. Today it is ~3.7k LOC in one flat `src/`. `runPipeline` is an 85-line function that owns every stage and the whole artifact layout. `matrices.mjs` mixes errors, math and parsers and is imported nearly everywhere. Three import cycles exist (`geometry↔copper`, `geometry↔ddr`, `modeling↔general-pipeline`). `Modeling` lives in `geometry.ts`, `PipelineResult` is inferred, error codes are ad-hoc strings, legacy and Node-only code is importable from pure code, and artifact paths are string literals in four files.
+`signal-integrity-pipeline` (formerly `pcb-spice-pipeline`) turns Circuit JSON into native-solver extraction, IBIS buffers, ngspice transients, eyes and DDR checks. Today it is ~3.7k LOC in one flat `src/`. `runPipeline` is an 85-line function that owns every stage and the whole artifact layout. `matrices.mjs` mixes errors, math and parsers and is imported nearly everywhere. Three import cycles exist (`geometry↔copper`, `geometry↔ddr`, `modeling↔general-pipeline`). `Modeling` lives in `geometry.ts`, `PipelineResult` is inferred, error codes are ad-hoc strings, legacy and Node-only code is importable from pure code, and artifact paths are string literals in four files.
 
 Must keep: the public names and signatures (`runPipeline`, `generateReport`, `modelingFromCircuitJson`, `assessDdr`, `resolveDdrAssessments(plans, geometry, configs)`, `stackupFromCircuitJson`, `transmittedBits`, listed types), the `/node` entry with its object-arg signatures, a root entry with no `node:*`, byte-identical output for identical inputs + solver outputs, today's error codes, artifact paths and `geometry.json` shape, and native physics only.
 
@@ -11,8 +11,8 @@ Must keep: the public names and signatures (`runPipeline`, `generateReport`, `mo
 Unchanged for callers. Errors become typed.
 
 ```ts
-import { runPipeline, generateReport, Diagnostic } from '@tscircuit/pcb-spice-pipeline'
-import { createNativeSolver, loadIbisSources, writePipelineOutput } from '@tscircuit/pcb-spice-pipeline/node'
+import { runPipeline, generateReport, Diagnostic } from '@tscircuit/signal-integrity-pipeline'
+import { createNativeSolver, loadIbisSources, writePipelineOutput } from '@tscircuit/signal-integrity-pipeline/node'
 
 const result = await runPipeline({
   circuitJson,

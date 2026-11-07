@@ -8,8 +8,8 @@ import type { BoardProps } from '@tscircuit/props'
 export { serializeSimulation } from './tsx-render.js'
 export type { IbisModelDefinition } from '@tscircuit/props'
 export interface SavedRecord { type: string; [key: string]: unknown }
-export const importedBoardRecords = Symbol.for('pcb-spice-pipeline.imported-board.v2')
-export const importedBoardDeclarations = Symbol.for('pcb-spice-pipeline.imported-board-declarations.v2')
+export const importedBoardRecords = Symbol.for('signal-integrity-pipeline.imported-board.v2')
+export const importedBoardDeclarations = Symbol.for('signal-integrity-pipeline.imported-board-declarations.v2')
 export type ImportedBoardInstance = Board & { [importedBoardRecords]?: SavedRecord[]; [importedBoardDeclarations]?: Group }
 
 export function savedRecords(circuitJson: readonly unknown[]): SavedRecord[] {
