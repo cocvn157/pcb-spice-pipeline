@@ -57,7 +57,47 @@ catch (e) {
 | `report` | HTML/CSV from a sealed result, bundled client | separate `FileMap` |
 | `adapters` | `/node`: native solver workdir, fs IBIS loading, output writing | disk |
 
+```mermaid
+flowchart BT
+  solver["solver<br/>invoke()"]
+  extraction --> solver & board
+  buffers --> board
+  simulation --> solver & board & extraction & buffers & observation
+  ddr --> board & simulation
+  pipeline --> solver & board & extraction & buffers & simulation & observation & ddr
+  report --> pipeline & board & simulation & ddr
+  adapters["adapters (/node)"] --> solver & board & buffers & pipeline & report
+```
+
+Arrows are imports, always downward. Every module also imports `kernel` (Diagnostic, ids, sha256, ledger); those edges are omitted. `check:modules` fails the build on any other edge shape: cycles, deep imports, `node:*` outside `adapters`.
+
 Imports are acyclic and computed, not declared: kernel ← solver ← extraction; kernel ← board ← {extraction, buffers, ddr, simulation}; observation ← {simulation, ddr}; all ← pipeline ← report; adapters import public surfaces. `legacy/` and tsx helpers move to `tests/support/`.
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> input
+  input --> admitted: admit
+  admitted --> declared: declare
+  declared --> bound: bind
+  bound --> extracted: extract
+  extracted --> simulated: simulate
+  simulated --> observed: observe
+  observed --> sealed: seal
+  sealed --> [*]
+  input --> failed
+  admitted --> failed
+  declared --> failed
+  bound --> failed
+  extracted --> failed
+  simulated --> failed
+  observed --> failed
+  failed --> [*]
+  note right of bound
+    validation line: runSolver unreachable
+    before here (PureContext, Omit<..., 'runSolver'>)
+  end note
+```
 
 **The pipeline is a typed fold over stage values** (`src/pipeline/{state,stages,run}.ts`). `PipelineState` is a discriminated union `input → admitted → declared → bound → extracted → simulated → observed → sealed`. `STAGES: Chain<typeof stages>` fails to compile if a stage is missing, duplicated or out of order. Before `bound`, a stage receives `PureContext` and the state holds `Omit<PipelineOptions,'runSolver'>`; `run.ts` is the only holder of `runSolver`. "Validate everything before spending solver work" is a compile-time fact, not a reviewed convention.
 
