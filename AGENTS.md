@@ -1,5 +1,7 @@
 # Rules for agents and contributors
 
+This is the only agent rules file. Do not add CLAUDE.md, GEMINI.md, .cursorrules or similar; tests/tooling/docs.test.ts fails if one appears.
+
 ## Diagrams: Mermaid only (enforced by `tests/tooling/docs.test.ts`)
 
 1. Every diagram in this repo is a fenced ```` ```mermaid ```` block inside Markdown: README, `docs/`, and PR descriptions alike.

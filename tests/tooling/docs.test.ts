@@ -5,7 +5,7 @@ import { join, extname } from 'node:path'
 
 const root = join(import.meta.dirname, '..', '..')
 const markdownFiles = (): string[] => {
-  const files = ['README.md', 'CLAUDE.md'].filter(f => existsSync(join(root, f)))
+  const files = ['README.md', 'AGENTS.md'].filter(f => existsSync(join(root, f)))
   const walk = (dir: string): void => {
     for (const name of readdirSync(join(root, dir))) {
       const rel = join(dir, name)
@@ -43,4 +43,10 @@ test('no diagram images in docs or markdown', () => {
   const images = (dir: string): string[] => !existsSync(join(root, dir)) ? [] : readdirSync(join(root, dir)).flatMap(n =>
     statSync(join(root, dir, n)).isDirectory() ? images(join(dir, n)) : /\.(png|svg|jpe?g|gif|webp)$/i.test(n) ? [join(dir, n)] : [])
   assert.deepEqual(images('docs'), [])
+})
+
+test('agent rules live only in AGENTS.md', () => {
+  assert.ok(existsSync(join(root, 'AGENTS.md')), 'AGENTS.md is the single rules file')
+  for (const other of ['CLAUDE.md', '.cursorrules', 'GEMINI.md', '.github/copilot-instructions.md'])
+    assert.ok(!existsSync(join(root, other)), `${other}: put agent rules in AGENTS.md instead`)
 })

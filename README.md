@@ -195,4 +195,4 @@ The native suite executes the full R + jωL/Maxwell-C regression and a complete 
 ## Contributing
 
 - `pnpm check:modules && pnpm typecheck && pnpm test` must pass. `check:modules` enforces module boundaries (imports only through `src/<module>/index.ts`, no cycles, `node:*` only in `src/adapters`) and that every declared error code has a test.
-- Diagrams are Mermaid only, and are either a **workflow** (`flowchart`) or a **state machine** (`stateDiagram-v2`). See [CLAUDE.md](CLAUDE.md).
+- Diagrams are Mermaid only, and are either a **workflow** (`flowchart`) or a **state machine** (`stateDiagram-v2`). See [AGENTS.md](AGENTS.md).
