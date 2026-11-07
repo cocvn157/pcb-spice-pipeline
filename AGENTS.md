@@ -21,7 +21,7 @@ This is the only agent rules file. Do not add CLAUDE.md, GEMINI.md, .cursorrules
 
 ## Code
 
-- `pnpm lint && pnpm check:modules && pnpm typecheck && pnpm test` must pass before a PR is ready.
+- `pnpm lint && pnpm check:modules && pnpm check:vocabulary && pnpm typecheck && pnpm test` must pass before a PR is ready.
 - Relative imports have no extension: `from './stages'`, and `from '../board'` for another module (enforced by `tests/tooling/imports.test.ts`). The build adds `.js` back in `dist/`.
 - Module rules, verification and migration notes: `docs/ARCHITECTURE.md`.
 - Output must stay byte-identical unless the PR says otherwise: `tests/compat/` pins exports, error codes, artifact paths and hashes.
@@ -36,3 +36,11 @@ This is the only agent rules file. Do not add CLAUDE.md, GEMINI.md, .cursorrules
 | No enums | Use a string-literal union (`type Mode = 'a' \| 'b'`) or an `as const` object. |
 | TypeScript files over 500 lines warn | Split the file. If it is important to keep it whole, add `/* eslint-disable local/max-file-lines -- <reason> */` at the top. |
 | One test file per source file | `tests/<module>/<name>.test.ts` tests `src/<module>/<name>.ts` (or `<name>/index.ts`). Many tests per file are fine. `tests/compat`, `tests/tooling` and `tests/support` test the package as a whole and are exempt. |
+
+## Naming vocabulary (`pnpm check:vocabulary`, dictionary in `tools/vocabulary.yaml`)
+
+Build names in `src/` from the words in `tools/vocabulary.yaml`. The checker splits every declared name into words (`foldProbeEye` → fold, probe, eye) and reports the share of names made only of dictionary words. It must stay at or above the file's `threshold` (85%). 100% is not the goal.
+
+- Prefer a word already in the dictionary. If it lists two words for one idea, use the listed one; `avoid` names the word to use instead.
+- Need a new concept? Add the word with a one-line plain-English meaning in the same PR as the code that uses it, so the reviewer sees the new word.
+- List base forms only: plurals and verb forms are accepted automatically (`ids` → id, `selected` → select).
