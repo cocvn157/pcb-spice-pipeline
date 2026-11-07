@@ -1,6 +1,7 @@
 import { Circuit } from '@tscircuit/core'
 import React from 'react'
-import type { Modeling } from '../../src/geometry.js'
+import type { AnyCircuitElement } from 'circuit-json'
+import type { Modeling } from '../../src/pipeline'
 
 export const modeling: Modeling = {
   reduction: 'routed-copper', sections: 4, relativePermittivity: 4.1,
@@ -19,7 +20,8 @@ export const curvedPoints: [number, number][] = [
   [.974888348, -16.150417663], [.989679168, -16.165208483], [.958056747, -18.304456245],
 ]
 
-export function NativeChannel({ vias = false, netBindings = false, short = false, points = [[-3, 0], [3, 0]] }: ChannelOptions) {
+/** A minimal four-layer TX-to-RX DQ channel on a ground pour; options switch on the vias, net bindings, short or route shape a test needs. */
+export function NativeChannel({ vias = false, netBindings = false, short = false, points = [[-3, 0], [3, 0]] }: ChannelOptions): React.JSX.Element {
   const local = points.map(([x, y]) => ({ x: x - points[0][0], y: y - points[0][1] }))
   return <board width={60} height={60} thickness={1.6} layers={4} fabricatorPreset="jlcpcb_standard" routeRemaining={false} schematicDisabled>
     {(['TX', 'RX'] as const).map((name, i) => <chip key={name} name={name}
@@ -51,7 +53,8 @@ export function NativeChannel({ vias = false, netBindings = false, short = false
   </board>
 }
 
-export async function nativeChannel(options: ChannelOptions = {}) {
+/** Renders the NativeChannel board through tscircuit core and returns its Circuit JSON. */
+export async function nativeChannel(options: ChannelOptions = {}): Promise<AnyCircuitElement[]> {
   const circuit = new Circuit({ platform: { partsEngineDisabled: true } })
   circuit.add(<NativeChannel {...options} />)
   await circuit.renderUntilSettled()

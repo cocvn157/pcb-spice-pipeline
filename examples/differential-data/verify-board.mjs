@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
-import { transmittedBits } from "../../dist/stimulus.js"
+import { transmittedBits } from "../../dist/index.js"
 
 const [file, scenario] = process.argv.slice(2)
 assert.ok(file && ["rs485", "cmos"].includes(scenario), "Usage: node verify-board.mjs CIRCUIT_JSON rs485|cmos")
@@ -20,7 +20,11 @@ const modelPath = `models/${vendor.file}`
 const sourceBytes = await readFile(new URL(`${scenario === "cmos" ? "../single-ended/" : "./"}${modelPath}`, import.meta.url))
 assert.equal(createHash("sha256").update(sourceBytes).digest("hex"), vendor.sha256, "Prepared IBIS source checksum")
 const list = type => cj.filter(x => x.type === type)
-const one = (type, predicate) => { const found = list(type).filter(predicate); assert.equal(found.length, 1, type); return found[0] }
+const one = (type, predicate) => {
+  const found = list(type).filter(predicate)
+  assert.equal(found.length, 1, type)
+  return found[0]
+}
 const chip = name => one("source_component", x => x.name === name)
 const port = (name, hint) => one("source_port", x => x.source_component_id === chip(name).source_component_id &&
   (x.name === hint || x.port_hints?.includes(hint)))
@@ -58,10 +62,12 @@ for (const name of ["TX", "RX"]) {
 }
 const lengths = []
 for (const [from, to] of settings.lanes) {
-  const a = port("TX", from), b = port("RX", to)
+  const a = port("TX", from)
+  const b = port("RX", to)
   const source = one("source_trace", x => x.connected_source_port_ids?.includes(a.source_port_id) && x.connected_source_port_ids?.includes(b.source_port_id))
   const trace = one("pcb_trace", x => x.source_trace_id === source.source_trace_id)
-  const ends = [pcbPort(a), pcbPort(b)], route = trace.route
+  const ends = [pcbPort(a), pcbPort(b)]
+  const route = trace.route
   const matches = (p, q) => Math.hypot(p.x - q.x, p.y - q.y) < 1e-5
   assert.ok((matches(route[0], ends[0]) && matches(route.at(-1), ends[1])) ||
     (matches(route[0], ends[1]) && matches(route.at(-1), ends[0])), "Physical routed endpoints")

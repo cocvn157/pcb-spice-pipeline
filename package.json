@@ -1,9 +1,9 @@
 {
-  "name": "@tscircuit/pcb-spice-pipeline",
+  "name": "@tscircuit/signal-integrity-pipeline",
   "version": "0.1.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tscircuit/pcb-spice-pipeline.git"
+    "url": "https://github.com/tscircuit/signal-integrity-pipeline.git"
   },
   "type": "module",
   "license": "MIT",
@@ -20,8 +20,8 @@
       "import": "./dist/index.js"
     },
     "./node": {
-      "types": "./dist/node.d.ts",
-      "import": "./dist/node.js"
+      "types": "./dist/adapters/index.d.ts",
+      "import": "./dist/adapters/index.js"
     }
   },
   "files": [
@@ -30,14 +30,18 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --import tsx --test tests/*.test.mjs tests/*.test.ts",
+    "test": "node --import tsx --test 'tests/**/*.test.mjs' 'tests/**/*.test.ts'",
     "test:native": "npm run build && node --import tsx --test tests/general.integration.mjs",
     "typecheck": "tsc --noEmit && tsc -p tests/tsconfig.json",
-    "build": "node scripts/build-client.mjs --clean && tsc && node scripts/bundle.mjs",
+    "build": "node scripts/build-client.mjs --clean && tsc && node scripts/fix-dist-imports.mjs && node scripts/bundle.mjs",
     "prepack": "npm run build",
     "pretest": "npm run build",
     "pretypecheck": "node scripts/build-client.mjs",
-    "test:package": "node --import tsx scripts/test-package.mjs"
+    "test:package": "node --import tsx scripts/test-package.mjs",
+    "check:modules": "tsx scripts/check-modules.ts",
+    "check:vocabulary": "tsx scripts/check-vocabulary.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@noble/hashes": "1.8.0",
@@ -55,9 +59,12 @@
     "circuit-json": "0.0.541",
     "circuit-to-svg": "0.0.454",
     "esbuild": "0.28.2",
+    "eslint": "10.13.0",
+    "eslint-plugin-jsdoc": "65.3.15",
     "react": "19.2.4",
     "tsx": "4.23.15",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.0"
   },
   "peerDependencies": {
     "@tscircuit/core": ">=0.0.2188",

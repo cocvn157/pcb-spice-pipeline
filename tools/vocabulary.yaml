@@ -1,0 +1,234 @@
+# The project's shared language: the words names in src/ are built from.
+# Checked by `pnpm check:vocabulary` (scripts/check-vocabulary.ts), which reports how many names use
+# only these words and lists the unknown ones. The target is deliberately below 100%: an unknown word
+# is a question for a person ("add it here, or rename the code?"), not an error.
+#
+# Sections:
+#   domain         concepts of this project. Every word has ONE plain-English line a newcomer understands.
+#   abbreviations  short forms that are standard here. Every word has its expansion.
+#   general        everyday English and programming words, as `- word word ...` lists grouped by theme.
+#   avoid          words not to use in new names. The value is the word to use instead.
+#
+# How to use it:
+#   - Prefer a word that is already here. If two words mean the same thing, use the one listed.
+#   - Need a new word? Add it, with its meaning, in the same PR as the code that uses it.
+#   - List base forms only: the checker also accepts plurals and verb forms (ids -> id, selected -> select,
+#     builder -> build, refined -> refine).
+#   - A word belongs to exactly one section.
+threshold: 85
+
+domain:
+  admit: the first stage, which reads the board's Circuit JSON and checks it before anything else uses it
+  artifact: a file the pipeline produces (solver deck, log, waveform, report data), recorded in the ledger
+  assembly: the bundle of converted IBIS chip models used by one experiment
+  assessment: the DDR timing check for one data signal and its strobe
+  asset: an IBIS model file that the board names (ibis_model_asset in Circuit JSON)
+  barrel: the plated copper tube that lines a via hole
+  bind: the stage that attaches chip models and probes to the planned experiments
+  board: the circuit board being analysed, read from Circuit JSON
+  bound: the pipeline state after binding; elsewhere, a lower or upper limit of a range
+  brand: a TypeScript type tag that proves a value passed a check (for example an admitted id)
+  buffer: an IBIS model of a chip's input or output circuit
+  capacitance: how much charge copper stores per volt (the C in RLGC)
+  capture: the moment a receiver samples data, set by the strobe
+  channel: everything electrical between driver and receiver: lanes, their return paths and nearby copper
+  circuit: an electrical network; also the Circuit JSON document that describes the board
+  coarse: the first, cheaper solver pass on a rough mesh, before refinement
+  component: a part on the board, such as a chip, resistor or capacitor
+  conductivity: how easily a material carries current, in siemens per metre
+  conductor: one piece of copper the field solver treats as a single electrical body
+  convergence: the check that a finer mesh no longer changes the answer
+  copper: the metal shapes on the board: traces, pours, pads and vias
+  crossing: the moment a waveform passes a threshold voltage
+  deck: an input file for a solver (FastHenry, FasterCap or ngspice)
+  declare: the stage that plans the experiments, probes and eyes before any solver runs
+  derating: a DDR timing adjustment that depends on how fast the signal edges are
+  diagnostic: the library's one error type: a short code, the module that failed and the logs that explain it
+  dielectric: the insulating material between copper layers
+  differential: a signal carried as the voltage difference between two wires
+  driver: the chip output that sends a signal
+  evidence: data kept in the result that shows how a conclusion was reached
+  experiment: one simulation run: a stimulus, its probes and the eyes measured from it
+  extract: the stage that measures each wire's R, L and C with the field solvers
+  extraction: measuring wire R, L and C from board geometry with field solvers (FastHenry, FasterCap)
+  eye: the eye diagram, many bit periods of a waveform overlaid to show how open the signal is
+  filament: a thin straight strip of copper that FastHenry splits a conductor into
+  finding: one problem a check reports, such as a DDR timing violation
+  fold: to overlay a waveform's bit periods on top of each other, building an eye
+  gate: the time span of a waveform that an eye or strobe check is allowed to use
+  geometry: the board's copper shapes, layers and positions, in millimetres
+  grade: the speed grade of a memory part, which sets its timing limits
+  ground: the zero-volt reference copper that signal current returns through
+  henry: the unit of inductance; also the second half of FastHenry, the inductance solver
+  hold: DDR hold time, how long data must stay stable after the strobe edge
+  impedance: a wire's opposition to changing current, in ohms
+  lane: one signal path on the board
+  layer: one copper or insulating sheet in the stackup
+  ledger: the single record of every artifact path the pipeline writes; a second write to a path fails
+  loop: a current loop: out along a conductor and back through its return path
+  margin: how far a measurement is inside its limit
+  mesh: the grid of small pieces a field solver splits copper into
+  metric: one number measured from an eye, such as its height or width
+  model: a chip model (IBIS) or the electrical model of the channel built from extraction
+  modeling: the settings for a run (extraction, buffers, simulation, DDR), read from the board by default
+  net: a set of pins and copper that are connected together
+  neutrality: the check that the charges in a capacitance matrix balance out to zero
+  node: a named connection point in the SPICE circuit
+  observation: the module that turns simulated waveforms into eyes and their metrics
+  observe: the stage that builds eyes and DDR checks from the simulated waveforms
+  pad: the copper area a component pin is soldered to
+  panel: a small flat piece of copper surface that FasterCap solves the charge on
+  passive: a component that does not amplify: resistor, capacitor or inductor
+  permittivity: how strongly an insulator stores electric field (its dielectric constant)
+  pin: a chip leg, named in the IBIS model
+  pipeline: the whole run from board to report, as a fixed chain of stages
+  plane: a large copper area on one layer, usually ground or power
+  plating: the copper lining inside a via hole
+  polygon: a closed shape made of outline rings of points
+  port: a chip connection the library drives or measures (source_port in Circuit JSON)
+  pour: a filled copper area on a layer (copper pour)
+  probe: a point where we measure voltage
+  receiver: the chip input that takes in a signal
+  reciprocity: the check that a matrix is symmetric (the effect of A on B equals B on A)
+  refinement: rerunning a solver on a finer mesh until the answer stops changing
+  residual: how far a computed result is from passing an exact check (smaller is better)
+  resistance: how much a wire resists steady current, in ohms (the R in RLGC)
+  return: the path current takes back to its source, usually through ground copper
+  ring: one closed loop of points that outlines a polygon or a hole in it
+  route: the path a trace follows across the board, as points and vias
+  scope: a named folder of artifacts that one module is allowed to write
+  seal: the final stage, which sorts and freezes the result's files
+  setup: DDR setup time, how long data must be stable before the strobe edge
+  signal: a voltage that carries data along a lane
+  simulate: the stage that runs the SPICE circuit in ngspice
+  simulation: running the SPICE circuit over time with ngspice
+  slab: a flat 3-D block of copper used while meshing
+  solid: a closed 3-D copper shape
+  solver: an external program that does the physics: FastHenry, FasterCap or ngspice
+  span: the range of layers a via crosses
+  spectrum: impedance measured across a range of frequencies
+  stackup: the order and thickness of the board's copper and insulating layers
+  stage: one fixed step of the pipeline (admit, declare, bind, extract, simulate, observe, seal)
+  stimulus: the bit pattern a driver sends during an experiment
+  strobe: the DDR timing signal (DQS) that tells the receiver when to sample data
+  stub: the unused part of a via beyond the layer where the signal leaves it
+  subcircuit: a nested group of components on the board; in SPICE, a reusable circuit block
+  subject: the thing a diagnostic points at, such as a cell, port or experiment
+  terminal: a connection end of a conductor or source
+  trace: a copper wire on one board layer
+  via: a plated hole that carries a signal between layers
+  violation: a measurement that breaks its limit
+  waveform: voltage over time at one probe
+  window: a span of time: one bit period in an eye, or the time data is valid in a DDR check
+  wire: a piece of copper that carries a signal; in plain words, a trace or via
+
+abbreviations:
+  abstol: absolute current tolerance (ngspice option)
+  ac: alternating current; in DDR thresholds, the level a signal must reach
+  args: arguments
+  cap: capacitance, as in FasterCap
+  config: configuration
+  csv: comma-separated values
+  dc: direct current; in DDR thresholds, the level a signal must stay beyond
+  ddr: double data rate memory
+  dir: directory
+  exec: execute a program
+  f: farad, the unit of capacitance
+  ftype: the function type of a source component (Circuit JSON field)
+  html: HyperText Markup Language
+  hz: hertz, cycles per second
+  ibis: I/O Buffer Information Specification, the chip model format
+  ibs: an IBIS model file
+  id: identifier
+  init: initial settings
+  json: JavaScript Object Notation
+  m: metre
+  ms: millisecond
+  mm: millimetre
+  ns: nanosecond
+  pcb: printed circuit board
+  ps: picosecond
+  rect: rectangle
+  reltol: relative tolerance (ngspice option)
+  rlgc: resistance, inductance, conductance, capacitance: the four wire measurements
+  rms: root mean square
+  sha: Secure Hash Algorithm (as in sha256)
+  sm: siemens per metre, the unit of conductivity
+  spice: the standard circuit simulation netlist format (run by ngspice)
+  stderr: standard error output of a program
+  stdout: standard output of a program
+  ui: unit interval, one bit period
+  url: web address
+  v: volt
+  vih: input high voltage, the level a receiver reads as 1
+  vil: input low voltage, the level a receiver reads as 0
+  vntol: voltage tolerance (ngspice option)
+  vref: reference voltage, the receiver's decision level
+  xyz: x, y and z coordinates
+
+general:
+  # actions
+  - accept acquire activate add advance apply assert assess attach begin build change check clean clip
+  - close compare compile connect contain convert create cross define derive display draw emit end exit
+  - expect fail fall find finish flip flush generate get has invoke is link load locate match measure
+  - merge normalize omit override parse produce quote raise read receive reduce refine register remove rename
+  - replace reset resolve rise run select set shift skip solve sort split start supply test transmit
+  - unlink update use validate view visit write
+  # states and outcomes
+  - connected contained default failure found grounded killed named oriented pinned scoped seen supplied
+  - unavailable unconverged unevaluated unselected used
+  # data shapes and code structure
+  - all any array attachment base binding body boolean box bucket budget byte candidate cell chain child
+  - code column command comment content context count data declaration definition descriptor element
+  - entry error event expression field file first format graph grid group hash index input item key
+  - kind label last level line list location log map mapping member message metadata method mode name
+  - namespace number option options order output owner package parent part path pattern payload piece
+  - plan policy prefix progress record reference request rest result root row schema section selection
+  - selector series source state status table text title token tree type unit validation value
+  # program runs and tools
+  - adapter comparison conversion converter diagram directory domain engine fast faster invocation tool
+  # report and user interface
+  - ambiguity approximation button canvas client color description detail download drag font hint issue
+  - limitation listener overlay overview plot reason report role summary tab viewer warning
+  # describing and comparing
+  - absolute active analytic best canonical common compatible compatibility condition convention direct
+  - empty equivalent exact expected finite fixed flat full global high horizontal inner limit low lowest
+  - max maximum middle min minimum native negative next numeric original other outer own physical
+  - positive preceding previous primitive prior pure quiet range raw relative safe serial target threshold
+  - characterization compliance
+  # quantities, electricity and units
+  - amount amplitude bit current denominator duration electrical energy factor farad fraction frequency
+  - interval material matrix measurement milliseconds ohm offset origin peak period phase plateau
+  - quantity reduction sample scale seconds speed step time timeout tolerance transmission voltage zero
+  # math
+  - cholesky delaunay interpolation multiply norm sum symmetrize transpose union
+  # geometry
+  - alignment anchor ancestor area aspect border boundary center contact connection coordinate curve
+  - depth direction distance division edge endpoint epsilon face gap height hole left length nearest
+  - outline point position profile radius right round segment side sign size sizing spacing surface
+  - thickness triangle width
+  # axis letters and their steps or counts (x, dx = step along x, nx = count along x)
+  - x y z dx dy nx ny nz
+  # place and relation words
+  - after along at before between by for from in inside of on out per through to up within
+  # irregular plurals the checker cannot reduce
+  - indices matrices stimuli
+  # other everyday words
+  - seed
+
+avoid:
+  centre: center
+  col: column
+  ctx: context
+  eps: epsilon
+  hi: high
+  lo: low
+  mid: middle
+  neg: negative
+  num: number
+  polys: polygon
+  pos: positive
+  pts: point
+  refs: reference
+  src: source
+  tris: triangle

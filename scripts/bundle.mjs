@@ -1,5 +1,5 @@
 import {build} from 'esbuild'
-import {rm,readFile,writeFile} from 'node:fs/promises'
+import {readFile,writeFile} from 'node:fs/promises'
 
 // The converter's umbrella entry also exports an archive loader. Bundle and
 // tree-shake its browser graph so importing our pure entry never initializes
@@ -9,7 +9,9 @@ await build({entryPoints:['src/index.ts'],outfile:'dist/index.js',bundle:true,
   mainFields:['module','main'],define:{process:'undefined'},
   external:['circuit-json','zod','earcut'],
 })
-// Historical audit helpers are source-only and are not part of the library.
-await rm('dist/legacy',{recursive:true,force:true})
+// The "./node" export is dist/adapters/index.js. Keep the historical dist/node.js path working for
+// consumers that import the file directly.
+await writeFile('dist/node.js',"export * from './adapters/index.js'\n")
+await writeFile('dist/node.d.ts',"export * from './adapters/index.js'\n")
 // Retain the bundled clipping dependency's copyright and license notice.
 await writeFile('dist/clipper2-LICENSE.txt','Clipper2: Copyright Angus Johnson 2010-2025. TypeScript port: Jeremy Tribby.\n\n'+await readFile('node_modules/clipper2-ts/LICENSE','utf8'))

@@ -1,0 +1,20 @@
+{
+  "failure: changed IBIS bytes": "2:72ca1d3d87563e30249aebbe0aeb117139839e9edbc5c923b3470f26dc9fcfb0",
+  "failure: malformed hash map": "2:ef43c46ef104618d4545d4b1a6328dc37ad21a0d8b2d13480ea433b9cd9dbaf1",
+  "failure: missing IBIS bytes": "2:d83bec2f56d787b8f33bf226b511642a15239fa9b10bde35c23137e01b93f537",
+  "failure: missing beginning": "2:9b05047c7f3dd13f8db9ce04a747ab02df5824ff16793c61e0648bd0aa02f84b",
+  "failure: missing hash entry": "2:8eeea738a7ee1784e431309a4e336da1f85bf227eb344ac3f64f2227bde27f22",
+  "failure: missing supply": "2:4a16527ad330521905cd689aa8aedd51ac7093249143a35c1b27f8b2ef192e4a",
+  "failure: missing waveform": "2:676f36e3a96abda53bce45bce0d9f0136b127a380ca954773d6f6ba1534f1ab3",
+  "failure: ngspice error line": "2:4924b08b51aae432384962acc022352a35bf8142a025936b1684ca97ca44efdc",
+  "failure: nonfinite sample": "2:a029bf9e0c86f20ac85cfdbeffbdba80ddef60dcf42f71a122775b1a995423b4",
+  "failure: short duration": "2:8bf041620c42fdec553a913befb7f13d184ace1f2fa0854e5f4675dc4b9bd1e3",
+  "failure: unsafe experiment id": "2:4fb1ff59f6b2adceaaa1ccfff2776e4043a4fa1450e5706c18346ab5310f67cc",
+  "failure: unsafe model id (after extraction)": "2:612e121fe4a6985004789bc2f3aff9257aeb47af99618129087e76271f97a101",
+  "rerun": "51:6b0f0e262d8ab89b99eff326ac0c299226cbb5961af7f83f674cacdcf5b729e1",
+  "run: in-memory": "52:620671e71a72a7aef48583d252e847f21b535a4769e1b5373fb8bb13a652b872",
+  "run: pinned hash": "52:3bd1052347ef35abb7b9329b8735ce370ceacbe0c7dc4858d7b95363ce34ba96",
+  "run: recovered warnings": "52:f0cce6b9f2d482f8b1ddf790a8f963e64bfd30f5d3aa925b8ef3a5e93373029a",
+  "run: shifted rerun waveform": "52:acd778e11992f975bd998b3f87d32f65b01007985efe6241ae94d3af0d2e7961",
+  "run: string IBIS sources": "52:620671e71a72a7aef48583d252e847f21b535a4769e1b5373fb8bb13a652b872"
+}

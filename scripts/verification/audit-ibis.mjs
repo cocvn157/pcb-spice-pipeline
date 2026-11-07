@@ -49,7 +49,9 @@ export async function auditIbis(out, experimentDir, circuit, run) {
   const evidence = []
   for (const [modelIndex, assembly] of assemblies.entries()) {
     const declared = one(declaredModels, model => model.simulation_ibis_model_id === assembly.simulationIbisModelId, 'Exact native model association')
-    const definition = assembly.definition, metadata = assembly.metadata, source = assembly.sourceEvidence
+    const definition = assembly.definition
+    const metadata = assembly.metadata
+    const source = assembly.sourceEvidence
     assert.deepEqual(source.ibisModelAsset, declared.ibis_model_asset, 'Loaded source retains its native asset descriptor')
     assert.equal(definition.component, declared.ibis_component_name)
     assert.deepEqual(definition.pinMap, declared.ibis_pin_name_to_source_port_id, 'Physical IBIS pin maps to the actual local source-port ID')

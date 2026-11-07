@@ -24,7 +24,8 @@ function modelTables(text, name) {
 function dcPotentials(sources) {
   const known = new Map([['0', 0]])
   for (let pass = 0; pass <= sources.length; pass++) for (const source of sources) {
-    const p = source.positiveNode, n = source.negativeNode
+    const p = source.positiveNode
+    const n = source.negativeNode
     if (known.has(n)) known.set(p, known.get(n) + source.voltageV)
     else if (known.has(p)) known.set(n, known.get(p) - source.voltageV)
   }
@@ -52,7 +53,8 @@ export async function auditStartup({ out, circuit, run, vendorIbis, nodeMap, csv
     const pin = cmos.find(pin => pin.sourcePortId === probe.signalSourceId)
     assert.ok(pin, 'CMOS observed physical pad belongs to its original selected vendor model')
     const data = modelTables(await readFile(join(out, 'inputs/ibis', `${pin.modelId}.ibs`), 'utf8'), pin.selectedModel)
-    let minimumV = -Infinity, maximumV = Infinity
+    let minimumV = -Infinity
+    let maximumV = Infinity
     for (const [table, [lower, upper]] of Object.entries(data.ranges)) {
       const inverted = ['pullup', 'power clamp'].includes(table)
       const reference = { pullup: 'pullup', pulldown: 'pulldown', 'power clamp': 'powerClamp', 'gnd clamp': 'groundClamp' }[table]
@@ -64,7 +66,8 @@ export async function auditStartup({ out, circuit, run, vendorIbis, nodeMap, csv
     assert.ok(Number.isFinite(minimumV) && Number.isFinite(maximumV) && minimumV < maximumV, 'Nonempty original vendor I/V characterization domain')
     const referenceV = potentials.get(probe.referenceNode)
     assert.ok(Number.isFinite(referenceV), 'CMOS probe has a declared DC ground/reference potential')
-    let quietSamples = 0, samplesOutsideCharacterizedDomain = 0
+    let quietSamples = 0
+    let samplesOutsideCharacterizedDomain = 0
     for (const row of csv.rows) {
       const padV = row[probe.column] + referenceV
       if (padV < minimumV - 1e-9 || padV > maximumV + 1e-9) {

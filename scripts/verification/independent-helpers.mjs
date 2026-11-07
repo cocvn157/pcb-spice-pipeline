@@ -26,7 +26,8 @@ export async function declaredDcSupplies(out, circuit, nodeMap, deck) {
   }])
   const declared = (modeling.supplies ?? []).map((source, index) => ({name:`VDECLARED${index}`,voltageV:source.voltageV,positive:port(source.positive),negative:port(source.negative)}))
   return [...physical,...declared].map(source => {
-    const positiveNode = nodeMap.nodes[source.positive], negativeNode = nodeMap.nodes[source.negative]
+    const positiveNode = nodeMap.nodes[source.positive]
+    const negativeNode = nodeMap.nodes[source.negative]
     assert.ok(positiveNode && negativeNode && Number.isFinite(source.voltageV), 'Finite supply binds two actual electrical nodes')
     const lines = deck.split(/\r?\n/).map(line => line.trim().split(/\s+/)).filter(parts => parts[0] === source.name)
     assert.equal(lines.length, 1, `Actual SPICE deck contains ${source.name} exactly once`)
@@ -61,7 +62,8 @@ export function parseCsv(text) {
 export function interpolate(timestamps, voltages, time) {
   assert.equal(timestamps.length, voltages.length)
   assert.ok(time >= timestamps[0] && time <= timestamps.at(-1), 'Interpolation uses recorded samples only')
-  let lower = 0, upper = timestamps.length - 1
+  let lower = 0
+  let upper = timestamps.length - 1
   while (upper - lower > 1) {
     const middle = Math.floor((lower + upper) / 2)
     if (timestamps[middle] <= time) lower = middle
@@ -113,7 +115,8 @@ export function boardGeometry(before, after) {
   const result = []
   for (const type of ['pcb_board', 'pcb_trace', 'pcb_via', 'pcb_smtpad', 'pcb_plated_hole', 'pcb_hole', 'pcb_copper_pour', 'pcb_keepout']) {
     const shapes = elements => elements.filter(element => element.type === type).map(element => sha256(JSON.stringify(physical(element)))).sort()
-    const left = shapes(before), right = shapes(after)
+    const left = shapes(before)
+    const right = shapes(after)
     assert.deepEqual(right, left, `${type}: preserved source geometry (IDs and sub-1e-10mm rounding excluded)`)
     result.push({ type, source: left.length, rendered: right.length, preserved: true })
   }
