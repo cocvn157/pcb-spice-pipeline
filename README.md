@@ -73,12 +73,12 @@ stateDiagram-v2
     direction LR
     [*] --> input
     input --> admitted: read board
-    admitted --> declared: plan work
+    admitted --> declared: plan work, build 3D copper model
     declared --> bound: prepare chip models
   }
   state "Run programs" as solve {
     direction LR
-    [*] --> extracted: measure wires
+    [*] --> extracted: mesh 3D copper, measure R, L, C
     extracted --> simulated: simulate signals
   }
   state "Finish" as finish {

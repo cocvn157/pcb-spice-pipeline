@@ -78,9 +78,9 @@ stateDiagram-v2
   direction LR
   [*] --> input
   input --> admitted: admit
-  admitted --> declared: declare
+  admitted --> declared: declare (build 3D copper model)
   declared --> bound: bind
-  bound --> extracted: extract
+  bound --> extracted: extract (mesh 3D copper, solve R, L, C)
   extracted --> simulated: simulate
   simulated --> observed: observe
   observed --> sealed: seal
