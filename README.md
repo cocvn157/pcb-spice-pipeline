@@ -53,9 +53,9 @@ What happens inside one `runPipeline` call (the small text under each step is th
 
 ```mermaid
 flowchart TD
-  board[/"Your board<br/>(Circuit JSON)"/] --> s1["1. Read the board, pick the wires to study<br/><small>board</small>"]
+  board[/"Your board<br/>(Circuit JSON)"/] --> s1["1. Read the board, build a 3D copper model<br/>of the wires to study (traces, vias, pours)<br/><small>board</small>"]
   chips[/"Chip models<br/>(IBIS files)"/] --> s3
-  s1 --> s2["2. Measure the wires: R, L, C<br/><small>extraction</small>"]
+  s1 --> s2["2. Mesh the 3D copper, measure R, L, C<br/><small>extraction</small>"]
   s2 <-->|"runSolver"| fs{{"FastHenry + FasterCap"}}
   s1 --> s3["3. Build one circuit: wires + chips<br/><small>buffers, simulation</small>"]
   s2 --> s3
