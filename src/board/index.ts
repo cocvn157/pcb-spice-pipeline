@@ -16,7 +16,7 @@ export { subcircuitTree, type SubcircuitTree } from './subcircuit'
 export { connectedSourceIds } from './connectivity'
 export type {
   PortSelector, ExtractionSettings, ReturnProfile, LaneModeling, BoardModeling, Modeling, ResolvedModeling,
-  RouteStage, SourcePort, PcbTrace, RoutePoint, RoutedPoint, LaneMapping, Conductor, GeometryCell, Geometry, ChannelGeometry,
+  RouteStage, SourcePort, PcbTrace, RoutePoint, RoutedPoint, LaneMapping, LaneGroup, Conductor, GeometryCell, Geometry, ChannelGeometry,
   RoutedCopper, CopperPoint, CopperXYZ, CopperPolygon, CopperSolid, CopperSegment, CopperPath, CopperPour,
 } from './geometry/types'
 export { selectPort, resolveRouteVias } from './geometry/ports'

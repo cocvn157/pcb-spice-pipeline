@@ -158,7 +158,10 @@ export function generalSimulationSpice(plan: SimulationPlan, geometry: Pick<Geom
     })
     lines.push(`* ${safeComment(model.name)}`, renamed.source, `XIBIS${i} ${terminals.join(' ')} ${renamed.wrapper}`)
   }
-  if (extracted.some(stage => stage.R.length !== geometry.mappings.length)) fail('matrix_dimension', 'Extracted channels must match every selected signal')
+  const seenLanes = new Set(extracted.flatMap(stage => stage.laneIndices ?? Array.from({ length: stage.R.length }, (_, i) => i)))
+  if (extracted.some(stage => stage.R.length !== (stage.laneIndices ? stage.laneIndices.length : geometry.mappings.length)) || seenLanes.size !== geometry.mappings.length || Array.from({ length: geometry.mappings.length }, (_, i) => i).some(i => !seenLanes.has(i))) {
+    fail('matrix_dimension', 'Extracted channels must match every selected signal')
+  }
   const channel = [...geometry.mappings.map(mapping => nodes.node(mapping.from)), ...geometry.mappings.map(mapping => nodes.node(mapping.to))]
   if (channel.includes('0') || new Set(channel).size !== channel.length) fail('channel_short', 'Every selected signal must have distinct driver and receiver nodes separate from the reference')
   lines.push(channelSpice(extracted, modeling.sections), `XCHAN ${[...channel, '0'].join(' ')} CHANNEL`)

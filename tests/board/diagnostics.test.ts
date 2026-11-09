@@ -58,7 +58,7 @@ test('route shape failures', () => {
       { route_type: 'via', x: 3, y: .375, from_layer: 'top', to_layer: 'bottom', hole_diameter: .2 }, { route_type: 'wire', x: 6, y: .375, width: .1, layer: 'bottom' },
       { route_type: 'via', x: 6, y: .375, from_layer: 'bottom', to_layer: 'top', hole_diameter: .2 }, { route_type: 'wire', x: 10, y: .375, width: .1, layer: 'top', end_pcb_port_id: 'b3' },
     ]
-  }), 'route_topology', /identical ordered layer\/via stage topology/)
+  }), 'return_geometry', /Missing via return\/material profile/)
   rejects(() => measuredLaneSpacingMm([[{ x: 0, y: 0, layer: 'top', route_type: 'wire' }], []], 'top'), 'lane_spacing', /lanes 0 and 1 share no routed segments/)
 })
 

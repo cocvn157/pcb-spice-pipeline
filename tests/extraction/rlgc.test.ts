@@ -130,3 +130,51 @@ test('malformed or nonpassive selected matrices fail before emitting a partial c
   assert.throws(() => channelSpice([{ ...channel, C: [[3, .1, 0], [.1, 3, 0], [0, 0, 3]] }], 1), /capacitance_sign/)
   assert.throws(() => channelSpice([], 1), /matrix_dimension/)
 })
+
+test('lanes with different layer/via stage topologies group by topology and cascade per group in SPICE', async () => {
+  const realCircuit: CircuitJson = JSON.parse(await readFile(new URL('../fixtures/am3352.circuit.json', import.meta.url), 'utf8'))
+  const realModeling: Modeling = JSON.parse(await readFile(new URL('../fixtures/am3352.modeling.json', import.meta.url), 'utf8'))
+  const dqTrace = realCircuit.find(e => e.type === 'pcb_trace' && e.source_trace_id === 'source_trace_14')
+  assert.ok(dqTrace?.type === 'pcb_trace')
+  const firstPoint = dqTrace.route[0]
+  const lastPoint = dqTrace.route.at(-1)!
+  assert.ok(firstPoint.route_type === 'wire' && lastPoint.route_type === 'wire')
+  dqTrace.route = [
+    { ...firstPoint, layer: 'top' },
+    { route_type: 'wire', x: (firstPoint.x + lastPoint.x) / 2, y: (firstPoint.y + lastPoint.y) / 2, width: firstPoint.width, layer: 'top' },
+    { ...lastPoint, layer: 'top' },
+  ]
+  realModeling.lanes.unshift({ port: 'DQ0', sourceTraceId: 'source_trace_14', from: { component: 'U1', port: 'M3' }, to: { component: 'U3', port: 'E3' } })
+  const geometry = geometryFromCircuitJson(realCircuit, realModeling)
+  assert.deepEqual(geometry.laneGroups, [
+    { lanes: ['DQ0'], laneIndices: [0], stages: ['top'] },
+    { lanes: ['DQS', 'DQSn'], laneIndices: [1, 2], stages: ['top', 'via', 'inner1', 'via', 'top'] },
+  ])
+  assert.equal(geometry.cells.length, 6)
+  assert.deepEqual(geometry.cells[0].lanes, ['DQ0'])
+  assert.deepEqual(geometry.cells[0].laneIndices, [0])
+  assert.equal(geometry.cells[0].conductors.length, 2)
+  for (let i = 1; i < 6; i++) {
+    assert.deepEqual(geometry.cells[i].lanes, ['DQS', 'DQSn'])
+    assert.deepEqual(geometry.cells[i].laneIndices, [1, 2])
+    assert.equal(geometry.cells[i].conductors.length, 3)
+  }
+  assert.ok(geometry.approximations.some(item => /electromagnetic coupling between distinct stage-topology groups is omitted/.test(item)))
+
+  const dqStage: ChannelMatrices = { laneIndices: [0], lanes: ['DQ0'], R: [[2]], L: [[4e-9]], C: [[3e-12]] }
+  const dqsStageA: ChannelMatrices = { laneIndices: [1, 2], lanes: ['DQS', 'DQSn'], R: [[3, .4], [.4, 3.2]], L: [[6e-9, 1e-9], [1e-9, 6.5e-9]], C: [[5e-12, -1e-12], [-1e-12, 5.2e-12]] }
+  const dqsStageB: ChannelMatrices = { laneIndices: [1, 2], lanes: ['DQS', 'DQSn'], R: [[1.5, .2], [.2, 1.6]], L: [[3e-9, .5e-9], [.5e-9, 3.2e-9]], C: [[2.5e-12, -.5e-12], [-.5e-12, 2.6e-12]] }
+  const deck = channelSpice([dqStage, dqsStageA, dqsStageB], 2)
+  assert.match(deck, /^\.subckt CHANNEL IN0 IN1 IN2 OUT0 OUT1 OUT2 REF$/m)
+  assert.ok(deck.includes('VS0_0 IN0 S0_0 0\n'))
+  assert.ok(deck.includes('L0_0 R0_0 N1_0 2e-9\n'))
+  assert.ok(deck.includes('VS1_0 N1_0 S1_0 0\n'))
+  assert.ok(deck.includes('L1_0 R1_0 OUT0 2e-9\n'))
+  assert.ok(deck.includes('VS2_1 IN1 S2_1 0\n'))
+  assert.ok(deck.includes('L2_1 L2_1 N1_1 3e-9\n'))
+  assert.ok(deck.includes('VS5_1 N3_1 S5_1 0\n'))
+  assert.ok(deck.includes('L5_1 L5_1 OUT1 1.5e-9\n'))
+  assert.ok(deck.includes('L5_2 L5_2 OUT2 1.6e-9\n'))
+  assert.equal([...deck.matchAll(/^K\d+_1_2 /gm)].length, 4)
+  assert.throws(() => channelSpice([dqStage, { ...dqsStageA, laneIndices: [0, 1] }], 1), /matrix_dimension/)
+})

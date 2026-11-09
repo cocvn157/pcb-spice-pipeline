@@ -21,6 +21,7 @@ export interface RefinementCheck {
 /** One stage's checked extraction: today's `stage-N/extraction.json` and one entry of PipelineResult.matrices. Key order is serialized. */
 export interface ExtractedStage {
   stage: number; profile: string
+  lanes?: string[]; laneIndices?: number[]
   R: Matrix; L: Matrix; C: Matrix
   units: { R: 'ohm'; L: 'H'; C: 'F' }
   frequencyHz: number

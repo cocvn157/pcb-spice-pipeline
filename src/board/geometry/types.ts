@@ -51,6 +51,9 @@ export interface LaneMapping {
   port: string; sourceTraceId: string; pcbTraceId: string; from: string; to: string
   pcbPorts: string[]; stages: RouteStage[]; originalRoute: RoutedPoint[]
 }
+export interface LaneGroup {
+  lanes: string[]; laneIndices: number[]; stages: string[]
+}
 
 /** Routed-copper data in mm, unmeshed (meshing is extraction's). Shape = geometry.json `routedCopper`. */
 export type CopperPoint = [number, number]
@@ -75,10 +78,11 @@ export interface GeometryCell {
    * stripline return in both adjacent planes). The scalar fields are part 0. */
   conductors: Conductor[]
   routedCopper?: RoutedCopper
+  lanes?: string[]; laneIndices?: number[]
 }
 export interface Geometry {
   stackup?: BoardStackup
-  cells: GeometryCell[]; mappings: LaneMapping[]
+  cells: GeometryCell[]; mappings: LaneMapping[]; laneGroups?: LaneGroup[]
   units: { circuitJson: 'mm'; geometry: 'm'; conductivity: 'S/m' }; approximations: string[]
 }
 /** Stub-era name for Geometry, kept for modules already coding against it. */
