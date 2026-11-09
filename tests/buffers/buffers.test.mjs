@@ -43,3 +43,19 @@ test('admission records exact source bytes and evidence; compilation pins each r
   assert.deepEqual(assembly.value.map(a=>a.spiceSha256),compiled[0].map(m=>sha256(m.source)))
   assert.deepEqual(JSON.parse(assembly.artifacts[0].body),JSON.parse(JSON.stringify(assembly.value)))
 })
+
+test('missing_run_state names the component, physical pin and IBIS signal for bound pins outside the channel',()=>{
+  const input=inMemoryInput()
+  input.circuitJson.push({type:'source_port',source_port_id:'source_port_347',source_component_id:'u0',name:'N4',port_hints:['DDR_DQS0','N4']})
+  const model=input.circuitJson.find(record=>record.type==='simulation_ibis_model'&&record.source_component_id==='u0')
+  model.ibis_pin_name_to_source_port_id.N4='source_port_347'
+  const ibisText=input.ibisSources['models/test.ibs'].toString('utf8').replace('4 VSS GND\r\n','4 VSS GND\r\nN4 DDR_DQS0 IN\r\n')
+  input.ibisSources['models/test.ibs']=Buffer.from(ibisText)
+  const declarations=declared(input)
+  const admitted=admitBuffers(declarations.models,input.ibisSources,input.modeling,rootScope('buffers'))
+  assert.throws(
+    ()=>compileBuffers(admitted.value,declarations.plans,modelRunDefinition,input.circuitJson),
+    error=>error?.code==='missing_run_state'&&
+      /^TX\.N4 \(IBIS DDR_DQS0\): explicit compatible input\/output state is required \(source_port_347\); set ibisPinStates \(e\.g\. \{ isOutput: false \}\)$/.test(error.message)
+  )
+})

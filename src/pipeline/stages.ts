@@ -59,7 +59,7 @@ export const declare: Stage<'admitted', 'declared'> = {
 export const bind: Stage<'declared', 'bound'> = {
   name: 'bind', from: 'declared', to: 'bound',
   run: state => {
-    const compiled = compileBuffers(state.buffers, state.experiments.plans, modelRunDefinition)
+    const compiled = compileBuffers(state.buffers, state.experiments.plans, modelRunDefinition, state.board.circuitJson)
     const bound = bindExperiments(state.experiments, state.geometry, compiled)
     return { state: { ...state, phase: 'bound', compiled, bound }, artifacts: [] }
   },

@@ -44,3 +44,17 @@ test('explicit nonzero solver exits reject even when the returned matrices look 
     ...await fixtureSolver(request),exitCode:23,
   })}),error=>error.code==='native_solver'&&error.message.includes('exited 23'))
 })
+
+test('missing_run_state names the component, physical pin and IBIS signal for bound pins outside the channel',async()=>{
+  const input=inMemoryInput()
+  input.circuitJson.push({type:'source_port',source_port_id:'source_port_347',source_component_id:'u0',name:'N4',port_hints:['DDR_DQS0','N4']})
+  const model=input.circuitJson.find(record=>record.type==='simulation_ibis_model'&&record.source_component_id==='u0')
+  model.ibis_pin_name_to_source_port_id.N4='source_port_347'
+  const ibisText=input.ibisSources['models/test.ibs'].toString('utf8').replace('4 VSS GND\r\n','4 VSS GND\r\nN4 DDR_DQS0 IN\r\n')
+  input.ibisSources['models/test.ibs']=Buffer.from(ibisText)
+  await assert.rejects(
+    runPipeline({...input,runSolver:async()=>{throw new Error('solver must not run')}}),
+    error=>error?.code==='missing_run_state'&&
+      /^TX\.N4 \(IBIS DDR_DQS0\): explicit compatible input\/output state is required \(source_port_347\); set ibisPinStates \(e\.g\. \{ isOutput: false \}\)$/.test(error.message)
+  )
+})

@@ -1,5 +1,6 @@
 // The IBIS part of general-pipeline.ts runPipeline (hash pinning, loading, conversion, assembly).
 import * as converter from '@tscircuit/ibis-to-spice'
+import type { CircuitJson } from '../board'
 import { sha256, type Artifact, type ArtifactScope, type Produced } from '../kernel'
 import { fail } from './diagnostics'
 import { loadModelSource } from './source'
@@ -42,14 +43,47 @@ export function admitBuffers(models: readonly ModelSourceRequest[], ibisSources:
  * converter input (simulation's modelRunDefinition), its source is pinned to the admitted bytes,
  * then convertIbisModelToSpice runs. Pure; converter errors propagate unchanged.
  */
-export function compileBuffers<M extends { pipelineId: string; ibis_component_name: string }, P extends { readonly models: readonly M[] }>(
-  admitted: AdmittedBuffers, plans: readonly P[], define: (model: M, plan: P) => ModelRunDefinition): CompiledBuffer[][] {
+export function compileBuffers<
+  M extends {
+    pipelineId: string
+    ibis_component_name: string
+    source_component_id?: string
+    ibis_pin_name_to_source_port_id?: Record<string, string>
+  },
+  P extends { readonly models: readonly M[] },
+>(
+  admitted: AdmittedBuffers,
+  plans: readonly P[],
+  define: (model: M, plan: P) => ModelRunDefinition,
+  circuitJson?: CircuitJson,
+): CompiledBuffer[][] {
+  const ports = new Map((circuitJson ?? []).filter(e => e.type === 'source_port').map(e => [e.source_port_id, e]))
+  const components = new Map((circuitJson ?? []).filter(e => e.type === 'source_component').map(e => [e.source_component_id, e]))
   return plans.map(plan => plan.models.map(model => {
     const index = admitted.models.findIndex(selected => selected.pipelineId === model.pipelineId)
     const input = define(model, plan)
     const source = admitted.sources[index]
     input.definition.source = { file: source.evidence.ibsFile, sha256: source.evidence.sourceSha256 }
-    const result = converter.convertIbisModelToSpice(source.bytes, input.definition, input.run)
+    let result: ReturnType<typeof converter.convertIbisModelToSpice>
+    try {
+      result = converter.convertIbisModelToSpice(source.bytes, input.definition, input.run)
+    } catch (error) {
+      if (error instanceof Error && 'code' in error && error.code === 'missing_run_state' && model.ibis_pin_name_to_source_port_id) {
+        const entry = Object.entries(model.ibis_pin_name_to_source_port_id).find(([, portId]) => error.message.startsWith(`${portId}: `))
+        if (entry) {
+          const [ibisPin, portId] = entry
+          const port = ports.get(portId)
+          const component = model.source_component_id ? components.get(model.source_component_id) : undefined
+          const ibisSignal = converter.parseIbis(source.text).components[model.ibis_component_name]?.pins[ibisPin]?.signal
+          const componentName = component?.name ?? model.source_component_id ?? model.ibis_component_name
+          const pinName = ibisSignal && port?.name === ibisSignal && ibisPin !== ibisSignal && port.port_hints?.includes(ibisPin) ? ibisPin : port?.name ?? portId
+          const ibisLabel = ibisSignal && ibisSignal !== ibisPin ? (ibisPin === pinName ? ibisSignal : ibisSignal === pinName ? ibisPin : `${ibisPin} ${ibisSignal}`) : ibisPin
+          const detail = error.message.slice(portId.length + 2)
+          throw new converter.IbisError('missing_run_state', `${componentName}.${pinName} (IBIS ${ibisLabel}): ${detail} (${portId}); set ibisPinStates (e.g. { isOutput: false })`)
+        }
+      }
+      throw error
+    }
     return { ...result, name: model.ibis_component_name, pipelineId: model.pipelineId, input, sourceEvidence: admitted.sources[index].evidence }
   }))
 }
