@@ -30,7 +30,33 @@ const numericDisplayOffsets = (record: Record<string, unknown>): Record<string, 
   return record
 }
 
+const returnBarSchema = z.object({
+  width_mm: z.number().finite().positive(),
+  thickness_mm: z.number().finite().positive(),
+  length_factor: z.number().finite().positive(),
+  center_y_mm: z.number().finite(),
+  center_z_mm: z.number().finite(),
+}).strict()
+
 const physicalCompatibility: Record<string, z.ZodTypeAny> = {
+  simulation_experiment: compatible(base.simulation_experiment, record => {
+    const channel = record.pcb_spice_channel
+    if (!channel || typeof channel !== 'object') return record
+    const profiles = Reflect.get(channel, 'straightened_stage_profiles')
+    if (!profiles || typeof profiles !== 'object') return record
+    const normalizedProfiles: Record<string, unknown> = {}
+    for (const [name, profile] of Object.entries(profiles as Record<string, unknown>)) {
+      if (profile && typeof profile === 'object' && Array.isArray(Reflect.get(profile, 'return'))) {
+        const bars = Reflect.get(profile, 'return') as unknown[]
+        if (bars.length > 0 && bars.every(bar => returnBarSchema.safeParse(bar).success)) {
+          normalizedProfiles[name] = { ...profile, return: bars[0] }
+          continue
+        }
+      }
+      normalizedProfiles[name] = profile
+    }
+    return { ...record, pcb_spice_channel: { ...channel, straightened_stage_profiles: normalizedProfiles } }
+  }),
   source_port: compatible(base.source_port, record => {
     if (record.source_component_id === null) delete record.source_component_id
     return record

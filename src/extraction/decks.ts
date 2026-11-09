@@ -78,8 +78,9 @@ export function fastHenryDeck(cell: GeometryCell,extraction: ExtractionSettings)
   if(cell.routedCopper) return copperFastHenryDeck(cell,extraction)
   const lines=[`* PCB pipeline: ${cell.conductors.length} primitive paths, all oriented +x`,'.units m',`.default sigma=${cell.conductivitySm} nhinc=${extraction.filaments} nwinc=${extraction.filaments}`]
   for(const [i,c] of cell.conductors.entries()) for(const [k,p] of (c.parts??[c]).entries()) {
+    const lengthM=p.lengthM??c.lengthM
     const [a,b]=k?[`N${i}a${k}`,`N${i}b${k}`]:[`N${i}a`,`N${i}b`]
-    lines.push(`${a} x=0 y=${p.yM} z=${p.zM}`,`${b} x=${c.lengthM} y=${p.yM} z=${p.zM}`,`E${i}${k?`p${k}`:''} ${a} ${b} w=${p.widthM} h=${p.thicknessM} sigma=${c.conductivitySm??cell.conductivitySm} wx=0 wy=1 wz=0`)
+    lines.push(`${a} x=0 y=${p.yM} z=${p.zM}`,`${b} x=${lengthM} y=${p.yM} z=${p.zM}`,`E${i}${k?`p${k}`:''} ${a} ${b} w=${p.widthM} h=${p.thicknessM} sigma=${c.conductivitySm??cell.conductivitySm} wx=0 wy=1 wz=0`)
     if(k) lines.push(`.equiv N${i}a ${a}`,`.equiv N${i}b ${b}`)
   }
   for(let i=0;i<cell.conductors.length;i++) lines.push(`.external N${i}a N${i}b`)
@@ -93,24 +94,25 @@ export function fasterCapDeck(cell: GeometryCell,extraction: ExtractionSettings)
   const list=['* 3D conductor surfaces; metres; homogeneous dielectric']
   for(const c of cell.conductors) {
     const rows=['* closed box conductor surface']
-    const n=Math.ceil(c.lengthM/(extraction.maxPanelLengthMm/1000))
     /** Appends one quadrilateral panel of the current conductor to its surface file. */
     const quad=(vs: [number,number,number][]): number=>rows.push(`Q ${c.name} ${vs.flat().join(' ')}`)
     for(const p of c.parts??[c]) {
-    const y0=p.yM-p.widthM/2
-    const y1=p.yM+p.widthM/2
-    const z0=p.zM-p.thicknessM/2
-    const z1=p.zM+p.thicknessM/2
-    for(let k=0;k<n;k++) {
-      const a=c.lengthM*k/n
-      const b=c.lengthM*(k+1)/n
-      quad([[a,y0,z0],[b,y0,z0],[b,y1,z0],[a,y1,z0]])
-      quad([[a,y1,z1],[b,y1,z1],[b,y0,z1],[a,y0,z1]])
-      quad([[a,y0,z1],[b,y0,z1],[b,y0,z0],[a,y0,z0]])
-      quad([[a,y1,z0],[b,y1,z0],[b,y1,z1],[a,y1,z1]])
-    }
-    quad([[0,y0,z0],[0,y1,z0],[0,y1,z1],[0,y0,z1]])
-    quad([[c.lengthM,y0,z1],[c.lengthM,y1,z1],[c.lengthM,y1,z0],[c.lengthM,y0,z0]])
+      const lengthM=p.lengthM??c.lengthM
+      const n=Math.ceil(lengthM/(extraction.maxPanelLengthMm/1000))
+      const y0=p.yM-p.widthM/2
+      const y1=p.yM+p.widthM/2
+      const z0=p.zM-p.thicknessM/2
+      const z1=p.zM+p.thicknessM/2
+      for(let k=0;k<n;k++) {
+        const a=lengthM*k/n
+        const b=lengthM*(k+1)/n
+        quad([[a,y0,z0],[b,y0,z0],[b,y1,z0],[a,y1,z0]])
+        quad([[a,y1,z1],[b,y1,z1],[b,y0,z1],[a,y0,z1]])
+        quad([[a,y0,z1],[b,y0,z1],[b,y0,z0],[a,y0,z0]])
+        quad([[a,y1,z0],[b,y1,z0],[b,y1,z1],[a,y1,z1]])
+      }
+      quad([[0,y0,z0],[0,y1,z0],[0,y1,z1],[0,y0,z1]])
+      quad([[lengthM,y0,z1],[lengthM,y1,z1],[lengthM,y1,z0],[lengthM,y0,z0]])
     }
     files[`${c.name}.txt`]=rows.join('\n')+'\n'
     list.push(`C ${c.name}.txt ${cell.relativePermittivity} 0 0 0`)

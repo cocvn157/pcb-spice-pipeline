@@ -110,5 +110,5 @@ export async function extractChannel(geometry: Geometry, modeling: ExtractionMod
 
 /** Independent l/(sigma*w*t) series resistance per conductor (routed: per signal path, mm segments). */
 function analyticResistance(cell: GeometryCell): number[] {
-  return cell.routedCopper?cell.routedCopper.signals.map(p=>p.segments.reduce((sum,s)=>sum+Math.hypot(...s.a.map((v,i)=>v-s.b[i]))*1000/((s.conductivitySm??cell.conductivitySm)*s.widthMm*s.thicknessMm),0)):cell.conductors.map(c=>c.lengthM/((c.conductivitySm??cell.conductivitySm)*(c.parts??[c]).reduce((area,p)=>area+p.widthM*p.thicknessM,0)))
+  return cell.routedCopper?cell.routedCopper.signals.map(p=>p.segments.reduce((sum,s)=>sum+Math.hypot(...s.a.map((v,i)=>v-s.b[i]))*1000/((s.conductivitySm??cell.conductivitySm)*s.widthMm*s.thicknessMm),0)):cell.conductors.map(c=>(c.parts??[c]).some(p=>p.lengthM!==undefined&&p.lengthM!==c.lengthM)?1/((c.conductivitySm??cell.conductivitySm)*(c.parts??[c]).reduce((conductance,p)=>conductance+p.widthM*p.thicknessM/(p.lengthM??c.lengthM),0)):c.lengthM/((c.conductivitySm??cell.conductivitySm)*(c.parts??[c]).reduce((area,p)=>area+p.widthM*p.thicknessM,0)))
 }

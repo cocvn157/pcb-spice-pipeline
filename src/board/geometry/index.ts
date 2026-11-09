@@ -32,10 +32,15 @@ export function validateModeling(m: Modeling): void {
   for(const [name,p] of Object.entries(m.reduction==='routed-copper'?{}:m.profiles??{})) {
     positive(p.spacingMm,`${name} spacingMm`)
     positive(p.relativePermittivity,`${name} relativePermittivity`)
-    if(!p.return) fail('return_geometry',`${name}: explicit finite return required`)
-    for(const key of ['widthMm','thicknessMm','lengthFactor'] as const) positive(p.return[key],`${name}.return.${key}`)
-    finite(p.return.centerYMm,`${name}.return.centerYMm`)
-    finite(p.return.centerZMm,`${name}.return.centerZMm`)
+    const bars=Array.isArray(p.return)?p.return:p.return?[p.return]:[]
+    if(!bars.length) fail('return_geometry',`${name}: explicit finite return required`)
+    bars.forEach((bar,i)=>{
+      const prefix=Array.isArray(p.return)?`${name}.return[${i}]`:`${name}.return`
+      if(!bar) fail('return_geometry',`${prefix}: explicit finite return required`)
+      for(const key of ['widthMm','thicknessMm','lengthFactor'] as const) positive(bar[key],`${prefix}.${key}`)
+      finite(bar.centerYMm,`${prefix}.centerYMm`)
+      finite(bar.centerZMm,`${prefix}.centerZMm`)
+    })
   }
   if(!m.extraction) fail('extraction','Explicit mesh/frequency/model settings required')
   for(const key of ['minimumHz','maximumHz','modelHz','filaments','refinementFilaments','convergenceTolerance','capTolerance','maxPanelLengthMm','reciprocityTolerance','dcResistanceTolerance'] as const) positive(m.extraction[key],`extraction.${key}`)
@@ -159,9 +164,11 @@ export function geometryFromCircuitJson(cj: CircuitJson,modeling: Modeling): Geo
     const spacingMm=profile?profile.spacingMm:signals.length>1?measuredLaneSpacingMm(mappings.map(l=>l.originalRoute),name):0
     const length=Math.max(...signals.map(s=>s.lengthMm))/1000
     const conductors: GeometryCell['conductors']=signals.map((s,j)=>({name:`sig${j}`,lengthM:s.lengthMm/1000,widthM:s.widthMm/1000,thicknessM:s.thicknessMm/1000,conductivitySm:s.conductivitySm??defaultCopperConductivitySm,yM:(j-(signals.length-1)/2)*spacingMm/1000,zM:0}))
-    const parts=profile?[{widthM:profile.return.widthMm/1000,thicknessM:profile.return.thicknessMm/1000,yM:profile.return.centerYMm/1000,zM:profile.return.centerZMm/1000}]
+    const profileBars=profile?(Array.isArray(profile.return)?profile.return:[profile.return]):undefined
+    const parts: NonNullable<GeometryCell['conductors'][number]['parts']>=profileBars?profileBars.map(bar=>({lengthM:length*bar.lengthFactor,widthM:bar.widthMm/1000,thicknessM:bar.thicknessMm/1000,yM:bar.centerYMm/1000,zM:bar.centerZMm/1000}))
       :derived!.parts.map(p=>({widthM:p.widthMm/1000,thicknessM:p.thicknessMm/1000,yM:0,zM:p.centerZMm/1000}))
-    conductors.push({name:'return',lengthM:length*(profile?.return.lengthFactor??1),...parts[0],conductivitySm:defaultCopperConductivitySm,...(parts.length>1?{parts}:{})})
+    const {lengthM: firstPartLengthM,...firstBox}=parts[0]
+    conductors.push({name:'return',lengthM:firstPartLengthM??length,...firstBox,conductivitySm:defaultCopperConductivitySm,...(parts.length>1?{parts}:{})})
     const boxes=conductors.flatMap(c=>(c.parts??[c]).map(p=>({name:c.name,...p})))
     for(let a=0;a<boxes.length;a++) for(let b=a+1;b<boxes.length;b++) if(Math.abs(boxes[a].yM-boxes[b].yM)<(boxes[a].widthM+boxes[b].widthM)/2 && Math.abs(boxes[a].zM-boxes[b].zM)<(boxes[a].thicknessM+boxes[b].thicknessM)/2) fail('conductor_overlap',`Stage ${i}: ${boxes[a].name}/${boxes[b].name} overlap`)
     return {stage:i,profile:name,conductors,relativePermittivity:profile?profile.relativePermittivity:derived!.relativePermittivity,conductivitySm:m.conductivitySm}

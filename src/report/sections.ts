@@ -136,8 +136,12 @@ export function reportContext(circuit: CircuitJson, geometry: Geometry, modeling
       ...circuit.filter(e => e.type === 'simulation_voltage_source').map((s): [string, string] => ['Physical voltage source',
         `${number(s.voltage, 'V')} ${s.is_dc_source || !s.wave_shape ? 'DC' : s.wave_shape}; ${label({ ports }, s.is_dc_source ? s.positive_source_port_id ?? s.positive_source_net_id : s.terminal1_source_port_id)} − ${label({ ports }, s.is_dc_source ? s.negative_source_port_id ?? s.negative_source_net_id : s.terminal2_source_port_id)}`]),
       ...(modeling.reduction==='routed-copper' ? [['Ground mesh spacing', number(modeling.extraction.groundMeshMm!, 'mm')], ['Homogeneous relative permittivity', number(modeling.relativePermittivity ?? geometry.stackup?.relativePermittivity!)] ] as [string,string][] : []),
-      ...Object.entries(modeling.profiles??{}).map(([name, profile]): [string, string] => [name + ' material / return',
-        `Signal center spacing ${number(profile.spacingMm, 'mm')}; relative permittivity ${number(profile.relativePermittivity)}; return width ${number(profile.return.widthMm, 'mm')}, thickness ${number(profile.return.thicknessMm, 'mm')}, center y/z ${number(profile.return.centerYMm, 'mm')} / ${number(profile.return.centerZMm, 'mm')}, length factor ${profile.return.lengthFactor}`]),
+      ...Object.entries(modeling.profiles??{}).map(([name, profile]): [string, string] => {
+        const returns=(Array.isArray(profile.return)?profile.return:[profile.return]).map(bar=>
+          `return width ${number(bar.widthMm, 'mm')}, thickness ${number(bar.thicknessMm, 'mm')}, center y/z ${number(bar.centerYMm, 'mm')} / ${number(bar.centerZMm, 'mm')}, length factor ${bar.lengthFactor}`).join('; ')
+        return [name + ' material / return',
+          `Signal center spacing ${number(profile.spacingMm, 'mm')}; relative permittivity ${number(profile.relativePermittivity)}; ${returns}`]
+      }),
     ],
   }
 }

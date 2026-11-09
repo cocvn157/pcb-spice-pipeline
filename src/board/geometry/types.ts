@@ -9,10 +9,11 @@ export interface ExtractionSettings {
   capTolerance: number; maxPanelLengthMm: number; reciprocityTolerance: number; dcResistanceTolerance: number
   groundMeshMm?: number
 }
+export interface ReturnBarProfile {
+  widthMm: number; thicknessMm: number; lengthFactor: number; centerYMm: number; centerZMm: number
+}
 export interface ReturnProfile {
-  spacingMm: number; relativePermittivity: number; return: {
-    widthMm: number; thicknessMm: number; lengthFactor: number; centerYMm: number; centerZMm: number
-  }
+  spacingMm: number; relativePermittivity: number; return: ReturnBarProfile | ReturnBarProfile[]
 }
 export interface LaneModeling { port: string; from: PortSelector; to: PortSelector; sourceTraceId?: string; driverPort?: string; receiverPort?: string }
 /**
@@ -68,7 +69,7 @@ export interface RoutedCopper {
   signals: CopperPath[]
   connections: CopperPath[]
 }
-export type Conductor = { name: string; lengthM: number; widthM: number; thicknessM: number; yM: number; zM: number; conductivitySm?: number; parts?: { widthM: number; thicknessM: number; yM: number; zM: number }[] }
+export type Conductor = { name: string; lengthM: number; widthM: number; thicknessM: number; yM: number; zM: number; conductivitySm?: number; parts?: { lengthM?: number; widthM: number; thicknessM: number; yM: number; zM: number }[] }
 export interface GeometryCell {
   stage: number; profile: string; relativePermittivity: number; conductivitySm: number
   /** `parts`: parallel boxes joined at both ends forming one conductor (e.g. a
