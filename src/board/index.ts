@@ -20,6 +20,7 @@ export type {
   RoutedCopper, CopperPoint, CopperXYZ, CopperPolygon, CopperSolid, CopperSegment, CopperPath, CopperPour,
 } from './geometry/types'
 export { selectPort, resolveRouteVias } from './geometry/ports'
-export { polygonContains, ringArea, closeRing } from './geometry/polygon'
+export { polygonContains, ringArea, closeRing, cleanPolygons, copperBoolean } from './geometry/polygon'
+export { mergeLayerPours } from './geometry/routed'
 export { derivedReturnWidthMm, groundPourLayers, stackupStageReturn, measuredLaneSpacingMm, type StageReturn, type StageReturnPart } from './geometry/returns'
 export { validateModeling, geometryFromCircuitJson, channelGeometry } from './geometry'

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { geometryFromCircuitJson, parseRecord, type CircuitJson } from '../../../src/board'
-import { fastHenryDeck, fasterCapDeck } from '../../../src/extraction'
+import { geometryFromCircuitJson, mergeLayerPours, parseRecord, ringArea, type CircuitJson } from '../../../src/board'
+import { fastHenryDeck, fasterCapDeck, groundMesh } from '../../../src/extraction'
 import { groundPlaneFixture, routedGroundPlaneFixture } from '../../fixtures/ground-plane'
 import { modeling as nativeModeling } from '../../fixtures/native-channel'
 import { viaInPad } from '../../fixtures/via-in-pad'
@@ -210,3 +210,40 @@ test('a board-level via in the pad of a part inside a nested subcircuit is a dir
   const nestedVias = await nest('vias')
   assert.throws(() => geometryFromCircuitJson(nestedVias, nativeModeling), /ground_connection/)
 })
+
+type Pour = Parameters<typeof mergeLayerPours>[0][number]
+/** Rectangular pour solid on `layer` spanning x0..x1 and y0..y1 mm. */
+const rect = (id: string, layer: string, x0: number, y0: number, x1: number, y1: number, z: number = 0): Pour => ({
+  pcbCopperPourId: id, layer, zMinMm: z, zMaxMm: z + .035,
+  polygon: [[[x0, y0], [x1, y0], [x1, y1], [x0, y1]]],
+})
+
+// Reduced from the AM3352 board: one GND plane per layer tiled from adjacent
+// bands. Meshing the bands separately put coincident conductors on each seam.
+test('touching same-layer pours merge into one plane before meshing', () => {
+  const pours = [
+    rect('band_0', 'inner1', 0, 6, 12, 10),
+    rect('band_1', 'inner1', 0, 3, 12, 6),
+    rect('band_2', 'inner1', 0, 0, 12, 3),
+    rect('island', 'inner1', 20, 0, 22, 2),
+    rect('other_layer', 'inner3', 0, 0, 12, 10, .5),
+  ]
+  const merged = mergeLayerPours(pours)
+  assert.deepEqual(merged.map(p => p.pcbCopperPourId).sort(), ['band_0+band_1+band_2', 'island', 'other_layer'])
+  const plane = merged.find(p => p.pcbCopperPourId.startsWith('band_0'))!
+  assert.equal(plane.polygon.length, 1)
+  assert.ok(Math.abs(Math.abs(ringArea(plane.polygon[0])) - 120) < 1e-9)
+  assert.deepEqual([plane.zMinMm, plane.zMaxMm], [0, .035])
+
+  // No two mesh conductors share a center (FastHenry: "filaments had identical centers").
+  /** Edge center coordinates of a meshed pour, formatted to 9 decimal places. */
+  const centers = (pour: Pour): string[] => {
+    const mesh = groundMesh(pour, 3, [])
+    return mesh.edges.map(([a, b]) => mesh.points[a].map((v, i) => ((v + mesh.points[b][i]) / 2).toFixed(9)).join(','))
+  }
+  const mergedCenters = centers(plane)
+  assert.equal(new Set(mergedCenters).size, mergedCenters.length)
+  const separate = pours.slice(0, 3).flatMap(centers)
+  assert.ok(new Set(separate).size < separate.length, 'separately meshed bands duplicate their shared edges')
+})
+

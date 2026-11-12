@@ -4,7 +4,7 @@ import { fail } from '../diagnostics'
 import { connectedSourceIds } from '../connectivity'
 import { subcircuitTree } from '../subcircuit'
 import { selectPort, resolveRouteVias } from './ports'
-import { ringArea as area, polygonContains as contains } from './polygon'
+import { ringArea as area, polygonContains as contains, copperBoolean } from './polygon'
 import type { CopperPoint as Point, CopperXYZ as XYZ, CopperPolygon as Polygon, CopperSegment as Segment, CopperPath as Path,
   Geometry, LaneMapping, ResolvedModeling, RoutedCopper } from './types'
 
@@ -178,6 +178,36 @@ function groundConnection(circuit: CircuitJson, m: ResolvedModeling, portId: str
   return {...path,contactRadiusMm}
 }
 
+/** Same-net pours that touch or overlap on one layer are one conductor. Boards
+ * often tile a plane from adjacent regions; meshing each region separately
+ * puts coincident conductors on every shared edge, which FastHenry rejects
+ * ("filaments had identical centers"). Disjoint islands stay separate. */
+export function mergeLayerPours(pours: RoutedCopper['pours']): RoutedCopper['pours'] {
+  const merged: RoutedCopper['pours'] = []
+  /** Axis-aligned bounding box [xMin, yMin, xMax, yMax] of a polygon ring. */
+  const bounds = (ring: Point[]): [number, number, number, number] => [Math.min(...ring.map(p => p[0])), Math.min(...ring.map(p => p[1])), Math.max(...ring.map(p => p[0])), Math.max(...ring.map(p => p[1]))]
+  for (const layerName of [...new Set(pours.map(p => p.layer))]) {
+    const group = pours.filter(p => p.layer === layerName)
+    if (group.length === 1) {
+      merged.push(group[0])
+      continue
+    }
+    for (const polygon of copperBoolean(group.map(p => p.polygon))) {
+      const rings = polygon.map((ring, i) => {
+        const vertices = ring.slice(0, -1)
+        return area(vertices) * (i ? -1 : 1) > 0 ? vertices : vertices.reverse()
+      })
+      const [x0, y0, x1, y1] = bounds(rings[0])
+      const ids = group.filter(p => {
+        const [a, b, c, d] = bounds(p.polygon[0])
+        return a <= x1 && c >= x0 && b <= y1 && d >= y0
+      }).map(p => p.pcbCopperPourId)
+      merged.push({ ...group[0], pcbCopperPourId: ids.join('+'), polygon: rings })
+    }
+  }
+  return merged
+}
+
 /** Builds routed-copper geometry: the ground net's pours, signal paths and both reference leads, unmeshed in mm. */
 export function routedCopperGeometry(circuit: CircuitJson, m: ResolvedModeling, mappings: LaneMapping[]): Geometry {
   const reference = selectPort(circuit, m.channelReference).source_port_id
@@ -192,7 +222,7 @@ export function routedCopperGeometry(circuit: CircuitJson, m: ResolvedModeling, 
   if (!net || groundNets.some(e => e.name !== net.name))
     fail('ground_net', 'The channel reference must connect to exactly one ground net (same-named source_net records marked is_ground across subcircuits)')
   const netIds = new Set(circuit.filter(e => e.type === 'source_net').filter(e => connected.has(e.source_net_id)).map(e => e.type === 'source_net' ? e.source_net_id : ''))
-  const pours: RoutedCopper['pours'] = circuit.filter(e => e.type === 'pcb_copper_pour').filter(e => netIds.has(e.source_net_id ?? '')).map(pour => {
+  const sourcePours: RoutedCopper['pours'] = circuit.filter(e => e.type === 'pcb_copper_pour').filter(e => netIds.has(e.source_net_id ?? '')).map(pour => {
     if (pour.shape !== 'brep') fail('ground_geometry', `${pour.pcb_copper_pour_id}: polygon BREP copper required`)
     const rings = [pour.brep_shape.outer_ring, ...pour.brep_shape.inner_rings]
     const polygon = rings.map((ring, i) => {
@@ -203,6 +233,7 @@ export function routedCopperGeometry(circuit: CircuitJson, m: ResolvedModeling, 
     })
     return { pcbCopperPourId: pour.pcb_copper_pour_id, layer: pour.layer, polygon, ...layer(m, pour.layer) }
   })
+  const pours = mergeLayerPours(sourcePours)
   if (!pours.length) fail('ground_geometry', `${net.name}: no physical ground copper pours found`)
   let receiver: string
   if (m.groundReturn) receiver = selectPort(circuit, m.groundReturn).source_port_id

@@ -89,6 +89,11 @@ test('routed-copper ground failures', () => {
   if (point.route_type !== 'wire') throw Error('fixture')
   point.width = -1
   rejects(() => geometryFromCircuitJson(lead.circuit, lead.modeling), 'route_geometry', /Positive finite wire widths are required/)
+  const huge = groundPlaneFixture()
+  const hugePour = huge.circuit.find(e => e.type === 'pcb_copper_pour')!
+  if (hugePour.type !== 'pcb_copper_pour' || hugePour.shape !== 'brep') throw Error('fixture')
+  huge.circuit.push({ ...hugePour, pcb_copper_pour_id: 'huge', brep_shape: { outer_ring: { vertices: [{ x: 0, y: 0 }, { x: 1e6, y: 0 }, { x: 1e6, y: 1e6 }] }, inner_rings: [] } })
+  rejects(() => geometryFromCircuitJson(huge.circuit, huge.modeling), 'copper_surface', /integer clipping range/)
 })
 
 test('reduction, section count and routed primitive type are validated before geometry', () => {

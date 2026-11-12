@@ -5,7 +5,7 @@ const raise = diagnostics('board', [
   'stackup', 'route_selection', 'empty_route', 'route_type', 'route_geometry', 'route_topology', 'varying_width',
   'endpoint_position', 'endpoint_layer', 'stale_endpoint', 'via_geometry', 'via_stub', 'layer_transition',
   'return_geometry', 'conductor_overlap', 'lane_spacing', 'simulation_scope',
-  'ground_net', 'ground_geometry', 'ground_reference', 'ground_connection', 'ground_connectivity',
+  'ground_net', 'ground_geometry', 'ground_reference', 'ground_connection', 'ground_connectivity', 'copper_surface',
 ] as const)
 export type BoardCode = Parameters<typeof raise>[0]
 /** Declared as a function so `never` narrows control flow at call sites. */
